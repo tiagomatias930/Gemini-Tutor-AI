@@ -10,7 +10,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": false
+    "declaration": false,
+    "types": ["node", "express", "cors"]
   },
   "include": ["*.ts"],
   "exclude": ["node_modules", "dist"]

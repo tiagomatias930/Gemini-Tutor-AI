@@ -9,7 +9,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@google-cloud/vertexai": "^1.9.2",
+    "@google-cloud/firestore": "^8.3.0",
     "@google/genai": "^1.29.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

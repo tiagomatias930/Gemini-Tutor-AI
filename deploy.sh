@@ -22,7 +22,7 @@ set -e
 # Configuration
 PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-$(gcloud config get project 2>/dev/null)}"
 REGION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
-SERVICE_NAME="gemini-tutor"
+SERVICE_NAME="gemini-tutor-ai"
 IMAGE_NAME="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
 if [ -z "$PROJECT_ID" ]; then
@@ -42,13 +42,17 @@ echo "════════════════════════�
 echo ""
 
 # Step 1: Enable required APIs
-echo "📦 Enabling required Google Cloud APIs..."
-gcloud services enable \
-  run.googleapis.com \
-  cloudbuild.googleapis.com \
-  aiplatform.googleapis.com \
-  --project="$PROJECT_ID" \
-  --quiet
+
+
+# Step 1b: Create Firestore database if it doesn't exist
+echo ""
+echo "🗄️  Ensuring Firestore database exists..."
+gcloud firestore databases describe --project="$PROJECT_ID" 2>/dev/null || \
+  gcloud firestore databases create \
+    --location="$REGION" \
+    --project="$PROJECT_ID" \
+    --quiet 2>/dev/null || \
+  echo "   Firestore database already exists or was just created."
 
 # Step 2: Build container image using Cloud Build
 echo ""
@@ -61,12 +65,18 @@ gcloud builds submit \
 # Step 3: Deploy to Cloud Run
 echo ""
 echo "🚀 Deploying to Cloud Run..."
+# Read GEMINI_API_KEY from .env if available
+GEMINI_KEY=""
+if [ -f .env ]; then
+  GEMINI_KEY=$(grep '^GEMINI_API_KEY=' .env | cut -d'=' -f2-)
+fi
+
 gcloud run deploy "$SERVICE_NAME" \
   --image "$IMAGE_NAME" \
   --region "$REGION" \
   --platform managed \
   --allow-unauthenticated \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$REGION" \
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$REGION,GEMINI_API_KEY=$GEMINI_KEY" \
   --memory 512Mi \
   --cpu 1 \
   --min-instances 0 \

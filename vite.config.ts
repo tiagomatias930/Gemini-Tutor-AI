@@ -20,7 +20,7 @@ export default defineConfig(({mode}) => {
       // Proxy /api requests to the backend server during local development
       proxy: {
         '/api': {
-          target: 'http://localhost:443',
+          target: 'http://localhost:8080',
           changeOrigin: true,
         },
       },

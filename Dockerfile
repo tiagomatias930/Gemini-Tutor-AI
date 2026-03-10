@@ -33,10 +33,10 @@ COPY --from=frontend-build /app/dist ./dist
 WORKDIR /app/server
 
 # Cloud Run sets PORT automatically (default 8080)
-ENV PORT=443
+ENV PORT=8080
 ENV NODE_ENV=production
 
-EXPOSE 443
+EXPOSE 8080
 
 # Start the backend server (which also serves the frontend static files)
 CMD ["node", "dist/index.js"]

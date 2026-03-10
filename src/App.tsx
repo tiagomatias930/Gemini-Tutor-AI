@@ -138,6 +138,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const audioContextRef = useRef<AudioContext | null>(null);
   const sendIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const isConnectedRef = useRef(false);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -224,7 +227,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         parts.push({ text: userMsg.text });
 
         const result = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite-preview',
+          model: 'gemini-3.1-pro-preview',
           contents: [{ role: 'user', parts }],
           config: { systemInstruction: TUTOR_SYSTEM_INSTRUCTION },
         });
@@ -245,7 +248,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     sendIntervalRef.current = setInterval(() => {
-      if (!videoRef.current || !ctx || !streamRef.current) return;
+      if (!isConnectedRef.current || !videoRef.current || !ctx || !streamRef.current) return;
       canvas.width = 640;
       canvas.height = 480;
       ctx.drawImage(videoRef.current, 0, 0, 640, 480);
@@ -261,13 +264,16 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   // ── Live API: Send audio ────────────────────────────────────────────────────
   const startSendingAudio = useCallback((session: any) => {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(audioStream => {
+      audioStreamRef.current = audioStream;
       const audioContext = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
       const source = audioContext.createMediaStreamSource(audioStream);
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
       source.connect(processor);
       processor.connect(audioContext.destination);
       processor.onaudioprocess = (e) => {
+        if (!isConnectedRef.current) return;
         const inputData = e.inputBuffer.getChannelData(0);
         const pcm16 = new Int16Array(inputData.length);
         for (let i = 0; i < inputData.length; i++) {
@@ -311,9 +317,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       if (!isCameraOn) await startCamera();
 
       const session = await ai.live.connect({
-        model: "gemini-3.1-flash-lite-preview",
+        model: "gemini-3.1-pro-preview",
         callbacks: {
           onopen: () => {
+            isConnectedRef.current = true;
             setIsConnected(true);
             setIsConnecting(false);
             setStatusMessage('Live — show me your homework!');
@@ -333,11 +340,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             setIsConnecting(false);
           },
           onclose: () => {
+            isConnectedRef.current = false;
             setIsConnected(false);
             setIsConnecting(false);
             setStatusMessage('Session ended');
             if (sendIntervalRef.current) clearInterval(sendIntervalRef.current);
+            processorRef.current?.disconnect();
+            processorRef.current = null;
+            audioStreamRef.current?.getTracks().forEach(t => t.stop());
+            audioStreamRef.current = null;
             audioContextRef.current?.close();
+            audioContextRef.current = null;
           }
         },
         config: {
@@ -361,7 +374,13 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   };
 
   const stopSession = async () => {
+    isConnectedRef.current = false;
     if (sendIntervalRef.current) clearInterval(sendIntervalRef.current);
+    sendIntervalRef.current = null;
+    processorRef.current?.disconnect();
+    processorRef.current = null;
+    audioStreamRef.current?.getTracks().forEach(t => t.stop());
+    audioStreamRef.current = null;
     audioContextRef.current?.close();
     audioContextRef.current = null;
     if (sessionRef.current) {

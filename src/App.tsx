@@ -224,7 +224,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         parts.push({ text: userMsg.text });
 
         const result = await ai.models.generateContent({
-          model: 'gemini-2.0-flash',
+          model: 'gemini-3.1-flash-lite-preview',
           contents: [{ role: 'user', parts }],
           config: { systemInstruction: TUTOR_SYSTEM_INSTRUCTION },
         });
@@ -311,7 +311,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       if (!isCameraOn) await startCamera();
 
       const session = await ai.live.connect({
-        model: "gemini-2.0-flash-live-001",
+        model: "gemini-3.1-flash-lite-preview",
         callbacks: {
           onopen: () => {
             setIsConnected(true);

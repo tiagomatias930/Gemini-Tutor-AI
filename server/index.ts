@@ -29,10 +29,10 @@ app.use(express.json({ limit: '10mb' }));
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
-const GCP_PROJECT = process.env.GOOGLE_CLOUD_PROJECT ||'';
+const GCP_PROJECT = process.env.GOOGLE_CLOUD_PROJECT || '';
 const GCP_LOCATION = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const MODEL_NAME = 'gemini-3.1-flash-last';
+const MODEL_NAME = 'gemini-3.1-flash-lite-preview';;
 
 const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Gemini Tutor".
 Your role is to:

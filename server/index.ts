@@ -39,7 +39,7 @@ const TEXT_MODEL  = 'gemini-2.5-flash';
 // Image generation model — produces images from text prompts.
 // Used to satisfy the hackathon requirement: "leverage... the creative power
 // of video/image generation" alongside the Gemini Live API.
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
+const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
 
 if (!GEMINI_API_KEY) {
   console.error('❌  GEMINI_API_KEY is not set. Get one at https://aistudio.google.com/apikey');

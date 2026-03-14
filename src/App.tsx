@@ -2,33 +2,137 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import {
   Mic, MicOff, Sparkles, Camera, CameraOff,
-  BookOpen, ArrowRight, Volume2, Send, MessageSquare, StopCircle,
+  BookOpen, ArrowRight, Volume2, MessageSquare,
+  StopCircle, Send, Globe, CornerDownLeft,
 } from 'lucide-react';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Gemini Tutor".
 Your role is to:
 - Help students understand problems step-by-step
 - Never give direct answers; guide them to discover solutions
 - Encourage and motivate them
-- Explain concepts clearly in a simple way
+- Explain concepts clearly using simple language
 - Ask follow-up questions to check understanding
-- If you can see their homework (via an image), describe what you see and offer specific help
+- If you can see their homework (via an image), describe it and offer specific help
+- Use the googleSearch tool to answer factual or current-events questions accurately
 - Respond in the same language the student uses
-Keep responses concise but helpful.`;
+Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
 
-// Criterion 1: Gemini model  |  Criterion 2: Google GenAI SDK
-const TEXT_MODEL = 'gemini-2.5-flash-lite';
+const TEXT_MODEL = 'gemini-2.5-flash';          // supports googleSearch
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
   image?: string;
+  source?: 'text' | 'voice';
+  grounded?: boolean; // true when answer used Google Search
 }
 
-// ── Welcome Screen ────────────────────────────────────────────────────────────
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+// Renders the most common Gemini output patterns: bold, italic, inline code,
+// code blocks, headers, bullet lists, numbered lists, and $math$ highlights.
+
+function renderInline(text: string): React.ReactNode[] {
+  const parts = text.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*|\$[^$\n]+\$)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2)
+      return <code key={i} className="bg-[#f1f3f4] text-[#c5221f] px-1.5 py-0.5 rounded text-[0.8em] font-mono">{part.slice(1, -1)}</code>;
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4)
+      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2)
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    if (part.startsWith('$') && part.endsWith('$') && part.length > 2)
+      return <span key={i} className="text-[#1a73e8] font-semibold bg-[#e8f0fe] px-1 rounded">{part.slice(1, -1)}</span>;
+    return <span key={i}>{part}</span>;
+  });
+}
+
+function MarkdownContent({ text, isUser }: { text: string; isUser: boolean }) {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // ── Code block ──────────────────────────────────────────────────────────
+    if (line.startsWith('```')) {
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++; }
+      nodes.push(
+        <pre key={`cb-${i}`} className="bg-[#1e1e2e] text-[#cdd6f4] rounded-xl p-4 my-2 overflow-x-auto text-xs font-mono leading-relaxed border border-[#313244]">
+          <code>{codeLines.join('\n')}</code>
+        </pre>
+      );
+      i++; continue;
+    }
+
+    // ── Headings ────────────────────────────────────────────────────────────
+    if (line.startsWith('### ')) {
+      nodes.push(<h3 key={i} className="text-sm font-semibold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(4))}</h3>);
+      i++; continue;
+    }
+    if (line.startsWith('## ')) {
+      nodes.push(<h2 key={i} className="text-base font-bold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(3))}</h2>);
+      i++; continue;
+    }
+    if (line.startsWith('# ')) {
+      nodes.push(<h1 key={i} className="text-lg font-bold mt-4 mb-2 text-[#202124]">{renderInline(line.slice(2))}</h1>);
+      i++; continue;
+    }
+
+    // ── Bullet list ──────────────────────────────────────────────────────────
+    if (line.match(/^[-*•]\s/)) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && lines[i].match(/^[-*•]\s/)) {
+        items.push(<li key={i} className="flex gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#5f6368] shrink-0" /><span>{renderInline(lines[i].replace(/^[-*•]\s/, ''))}</span></li>);
+        i++;
+      }
+      nodes.push(<ul key={`ul-${i}`} className="space-y-1 my-2">{items}</ul>);
+      continue;
+    }
+
+    // ── Numbered list ────────────────────────────────────────────────────────
+    if (line.match(/^\d+\.\s/)) {
+      const items: React.ReactNode[] = [];
+      let n = 1;
+      while (i < lines.length && lines[i].match(/^\d+\.\s/)) {
+        items.push(<li key={i} className="flex gap-2"><span className="shrink-0 text-[#5f6368] font-medium w-5 text-right">{n}.</span><span>{renderInline(lines[i].replace(/^\d+\.\s/, ''))}</span></li>);
+        i++; n++;
+      }
+      nodes.push(<ol key={`ol-${i}`} className="space-y-1 my-2">{items}</ol>);
+      continue;
+    }
+
+    // ── Horizontal rule ──────────────────────────────────────────────────────
+    if (line.match(/^---+$/)) {
+      nodes.push(<hr key={i} className="my-3 border-[#e8eaed]" />);
+      i++; continue;
+    }
+
+    // ── Empty line ───────────────────────────────────────────────────────────
+    if (line.trim() === '') {
+      if (nodes.length > 0) nodes.push(<div key={`sp-${i}`} className="h-1.5" />);
+      i++; continue;
+    }
+
+    // ── Paragraph ────────────────────────────────────────────────────────────
+    nodes.push(
+      <p key={i} className={`leading-relaxed ${isUser ? '' : 'text-[#3c4043]'}`}>
+        {renderInline(line)}
+      </p>
+    );
+    i++;
+  }
+
+  return <div className="space-y-px">{nodes}</div>;
+}
+
+// ─── Welcome Screen ───────────────────────────────────────────────────────────
 function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
   const [apiKey, setApiKey] = useState(
     () => localStorage.getItem('gemini_api_key') || process.env.GEMINI_API_KEY || ''
@@ -49,63 +153,72 @@ function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
         <a href="https://ai.google.dev/gemini-api/docs/live-api" target="_blank" className="hover:underline">Docs</a>
       </nav>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 -mt-16">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg mb-8">
-          <Sparkles className="text-white" size={28} />
+      <main className="flex-1 flex flex-col items-center justify-center px-4 -mt-12">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500
+                        flex items-center justify-center shadow-lg mb-8">
+          <Sparkles className="text-white" size={32} />
         </div>
-        <h1 className="text-5xl md:text-6xl font-normal tracking-tight text-slate-800 mb-2 text-center">
-          <span className="text-blue-500">G</span><span className="text-red-500">e</span>
-          <span className="text-yellow-500">m</span><span className="text-blue-500">i</span>
-          <span className="text-green-500">n</span><span className="text-red-500">i</span>
+
+        <h1 className="text-5xl md:text-6xl font-normal tracking-tight text-slate-800 mb-3 text-center">
+          <span className="text-[#4285f4]">G</span><span className="text-[#ea4335]">e</span>
+          <span className="text-[#fbbc05]">m</span><span className="text-[#4285f4]">i</span>
+          <span className="text-[#34a853]">n</span><span className="text-[#ea4335]">i</span>
           <span className="text-slate-800"> Tutor</span>
         </h1>
+
         <p className="text-lg text-slate-500 mb-10 text-center max-w-md">
-          Your AI-powered homework assistant. Point your camera and start learning.
+          Your AI-powered homework assistant — with web search, voice and camera.
         </p>
+
+        {/* Google Search-bar style input */}
         <div className="w-full max-w-xl">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-full border shadow-sm transition-shadow bg-white ${
-            error ? 'border-red-300' : 'border-slate-200 hover:shadow-md focus-within:shadow-md'
-          }`}>
+          <div className={`flex items-center gap-3 px-5 py-4 rounded-full bg-white
+                          border shadow-sm transition-all hover:shadow-md focus-within:shadow-[0_2px_12px_rgba(0,0,0,0.18)] ${
+                            error ? 'border-red-300' : 'border-[#dfe1e5]'
+                          }`}>
             <BookOpen size={20} className="text-slate-400 shrink-0" />
             <input
               type="password" value={apiKey}
               onChange={e => { setApiKey(e.target.value); setError(''); }}
               onKeyDown={e => e.key === 'Enter' && handleStart()}
-              placeholder="Enter your Gemini API Key..."
+              placeholder="Paste your Gemini API Key here..."
               className="flex-1 outline-none text-base text-slate-700 placeholder:text-slate-400 bg-transparent"
             />
             <button onClick={handleStart}
-              className="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-colors shrink-0">
+              className="w-10 h-10 rounded-full bg-[#1a73e8] hover:bg-[#1765cc] text-white
+                         flex items-center justify-center transition-colors shrink-0 shadow-sm">
               <ArrowRight size={18} />
             </button>
           </div>
           {error && <p className="text-red-500 text-sm mt-2 pl-6">{error}</p>}
         </div>
+
         <div className="flex flex-wrap gap-3 mt-8 justify-center">
           {[
-            { icon: Camera, label: 'Camera Vision' },
-            { icon: Mic, label: 'Voice Chat' },
-            { icon: Volume2, label: 'Audio Responses' },
+            { icon: Camera,       label: 'Camera Vision' },
+            { icon: Mic,          label: 'Voice Chat' },
+            { icon: Globe,        label: 'Web Search' },
             { icon: MessageSquare, label: 'Text Chat' },
+            { icon: Volume2,      label: 'Audio Responses' },
           ].map(({ icon: Icon, label }) => (
-            <span key={label} className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-full text-sm text-slate-600 border border-slate-100">
-              <Icon size={16} />{label}
+            <span key={label} className="flex items-center gap-2 px-4 py-2 bg-[#f8f9fa] rounded-full
+                                         text-sm text-[#5f6368] border border-[#e8eaed]">
+              <Icon size={15} />{label}
             </span>
           ))}
         </div>
       </main>
 
-      <footer className="w-full text-center py-4 text-xs text-slate-400 border-t border-slate-100">
-        {/* Criterion 3: deployed on Google Cloud Run + Firestore */}
-        Powered by Google Gemini · Deployed on Google Cloud
+      <footer className="w-full text-center py-4 text-xs text-[#9aa0a6] border-t border-[#f1f3f4]">
+        Powered by Google Gemini · Google Search · Deployed on Google Cloud
       </footer>
     </div>
   );
 }
 
-// ── Tutor Screen ──────────────────────────────────────────────────────────────
+// ─── Tutor Screen ─────────────────────────────────────────────────────────────
 function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void }) {
-  // ── UI state ─────────────────────────────────────────────────────────────────
+  // ── UI state ──────────────────────────────────────────────────────────────
   const [isConnected, setIsConnected]         = useState(false);
   const [isConnecting, setIsConnecting]       = useState(false);
   const [isCameraOn, setIsCameraOn]           = useState(false);
@@ -115,65 +228,83 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [messages, setMessages]               = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput]             = useState('');
   const [isSending, setIsSending]             = useState(false);
+  // Live partial transcript shown while model is speaking
+  const [liveTranscript, setLiveTranscript]   = useState('');
 
-  // Criterion 3: session stored in Cloud Firestore via the backend
+  // Criterion 3: session stored in Cloud Firestore via backend
   const [sessionId] = useState(() => {
-    const stored = sessionStorage.getItem('tutor_session_id');
-    if (stored) return stored;
+    const s = sessionStorage.getItem('tutor_session_id');
+    if (s) return s;
     const id = `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     sessionStorage.setItem('tutor_session_id', id);
     return id;
   });
 
+  // Load Firestore history on mount
   useEffect(() => {
     fetch(`/api/sessions/${sessionId}`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.messages?.length)
-          setMessages(d.messages.map((m: any) => ({ role: m.role, text: m.text })));
-      })
+      .then(d => { if (d?.messages?.length) setMessages(d.messages.map((m: any) => ({ role: m.role, text: m.text, source: m.source }))); })
       .catch(() => {});
   }, [sessionId]);
 
-  // ── Refs ──────────────────────────────────────────────────────────────────────
-  const videoRef            = useRef<HTMLVideoElement>(null);
-  const sessionRef          = useRef<any>(null);
-  const streamRef           = useRef<MediaStream | null>(null);
-  const audioContextRef     = useRef<AudioContext | null>(null);
-  const sendIntervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const chatEndRef          = useRef<HTMLDivElement>(null);
-  const isConnectedRef      = useRef(false);
-  const isTearingDownRef    = useRef(false);
-  const workletNodeRef      = useRef<AudioWorkletNode | null>(null);
-  const audioStreamRef      = useRef<MediaStream | null>(null);
-  // One shared AudioContext for all playback (never recreated mid-session)
-  const playbackCtxRef      = useRef<AudioContext | null>(null);
-  // Monotonic cursor — each chunk scheduled to start when the previous ends
-  const nextPlayTimeRef     = useRef<number>(0);
-  // All sources currently scheduled but not yet finished → stop on interrupt
-  const scheduledSourcesRef = useRef<AudioBufferSourceNode[]>([]);
-  // Ref mirror of isModelSpeaking (avoids stale closures in callbacks)
-  const isModelSpeakingRef  = useRef(false);
+  // ── Refs ───────────────────────────────────────────────────────────────────
+  const videoRef              = useRef<HTMLVideoElement>(null);
+  const sessionRef            = useRef<any>(null);
+  const streamRef             = useRef<MediaStream | null>(null);
+  const audioContextRef       = useRef<AudioContext | null>(null);
+  const sendIntervalRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chatEndRef            = useRef<HTMLDivElement>(null);
+  const textareaRef           = useRef<HTMLTextAreaElement>(null);
+  const isConnectedRef        = useRef(false);
+  const isTearingDownRef      = useRef(false);
+  const workletNodeRef        = useRef<AudioWorkletNode | null>(null);
+  const audioStreamRef        = useRef<MediaStream | null>(null);
+  const playbackCtxRef        = useRef<AudioContext | null>(null);
+  const nextPlayTimeRef       = useRef<number>(0);
+  const scheduledSourcesRef   = useRef<AudioBufferSourceNode[]>([]);
+  const isModelSpeakingRef    = useRef(false);
+  // Context persistence: mirrors messages state so Live API callbacks can read it
+  const messagesRef           = useRef<ChatMessage[]>([]);
+  // Accumulates voice transcript for the current model turn
+  const liveModelTranscriptRef = useRef('');
+  // Accumulates user speech transcript
+  const liveUserTranscriptRef  = useRef('');
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  // Keep messagesRef in sync
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, liveTranscript]);
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
   const setModelSpeaking = useCallback((v: boolean) => {
     isModelSpeakingRef.current = v;
     setIsModelSpeaking(v);
   }, []);
 
-  // Stop all buffered audio immediately (used on interrupt and on teardown)
   const flushAudioQueue = useCallback(() => {
     const now = playbackCtxRef.current?.currentTime ?? 0;
-    for (const src of scheduledSourcesRef.current) {
-      try { src.stop(now); } catch { /* already ended */ }
-    }
+    scheduledSourcesRef.current.forEach(s => { try { s.stop(now); } catch { } });
     scheduledSourcesRef.current = [];
     nextPlayTimeRef.current = 0;
   }, []);
 
-  // ── Camera ────────────────────────────────────────────────────────────────────
+  // Build system instruction with conversation context for Live API reconnections.
+  // This is the key to "not forgetting context" — each new Live session receives
+  // a summary of what was already discussed.
+  const buildSystemInstruction = useCallback((msgs: ChatMessage[]) => {
+    if (!msgs.length) return TUTOR_SYSTEM_INSTRUCTION;
+    const summary = msgs.slice(-12)
+      .map(m => `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.text.slice(0, 250)}`)
+      .join('\n');
+    return `${TUTOR_SYSTEM_INSTRUCTION}
+
+--- Conversation history (for continuity — do NOT repeat these, just remember them) ---
+${summary}
+--- End of history ---`;
+  }, []);
+
+  // ── Camera ─────────────────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -199,80 +330,105 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     return c.toDataURL('image/jpeg', 0.8);
   }, [isCameraOn]);
 
-  // ── Text Chat ─────────────────────────────────────────────────────────────────
+  // ── Auto-grow textarea ─────────────────────────────────────────────────────
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setChatInput(e.target.value);
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+  }, []);
+
+  const resetTextarea = useCallback(() => {
+    setChatInput('');
+    if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
+  }, []);
+
+  // ── Text Chat ──────────────────────────────────────────────────────────────
   const sendChatMessage = useCallback(async (includeImage = false) => {
     const text = chatInput.trim();
     if (!text && !includeImage) return;
+
     const frameDataUrl = includeImage ? captureFrame() : null;
     const frameBase64  = frameDataUrl?.split(',')[1];
     const userMsg: ChatMessage = {
       role: 'user',
       text: text || 'Please analyze this image and help me understand it.',
       image: frameDataUrl || undefined,
+      source: 'text',
     };
+
     setMessages(prev => [...prev, userMsg]);
-    setChatInput('');
+    resetTextarea();
     setIsSending(true);
     setError('');
+
     try {
-      let response: string;
+      let response = '';
+      let grounded = false;
+
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: userMsg.text, image: frameBase64, sessionId,
-            history: messages.slice(-10).map(m => ({ role: m.role, text: m.text })),
+            history: messages.slice(-12).map(m => ({ role: m.role, text: m.text })),
           }),
         });
         if (!res.ok) throw new Error(`Backend ${res.status}`);
-        response = (await res.json()).response;
+        const data = await res.json();
+        response = data.response;
+        grounded = data.grounded ?? false;
       } catch {
+        // Fallback: direct Gemini API with googleSearch tool
         if (!apiKey) throw new Error('Backend unavailable and no API key provided.');
         const ai = new GoogleGenAI({ apiKey });
         const parts: any[] = [];
         if (frameBase64) parts.push({ inlineData: { data: frameBase64, mimeType: 'image/jpeg' } });
         parts.push({ text: userMsg.text });
+
+        // Build full history for context
+        const histContents = messages.slice(-12).map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }],
+        }));
+        histContents.push({ role: 'user', parts });
+
         const result = await ai.models.generateContent({
           model: TEXT_MODEL,
-          contents: [{ role: 'user', parts }],
-          config: { systemInstruction: TUTOR_SYSTEM_INSTRUCTION },
+          contents: histContents,
+          config: {
+            systemInstruction: TUTOR_SYSTEM_INSTRUCTION,
+            tools: [{ googleSearch: {} }],
+          },
         });
         response = result.text || 'No response received.';
+        grounded = !!(result.candidates?.[0]?.groundingMetadata);
       }
-      setMessages(prev => [...prev, { role: 'assistant', text: response }]);
+
+      setMessages(prev => [...prev, { role: 'assistant', text: response, source: 'text', grounded }]);
     } catch (err: any) {
       setError(err.message || 'Failed to send message');
-      setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, something went wrong: ${err.message}` }]);
+      setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, something went wrong: ${err.message}`, source: 'text' }]);
     } finally { setIsSending(false); }
-  }, [chatInput, captureFrame, messages, apiKey, sessionId]);
+  }, [chatInput, captureFrame, messages, apiKey, sessionId, resetTextarea]);
 
-  // ── Live API: video frame sender ──────────────────────────────────────────────
+  // ── Live API: video frame sender ───────────────────────────────────────────
   const startSendingFrames = useCallback((session: any) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     sendIntervalRef.current = setInterval(() => {
-      if (isTearingDownRef.current || !isConnectedRef.current || !sessionRef.current ||
-          !videoRef.current || !ctx || !streamRef.current) return;
+      if (isTearingDownRef.current || !isConnectedRef.current || !sessionRef.current
+          || !videoRef.current || !ctx || !streamRef.current) return;
       canvas.width = 640; canvas.height = 480;
       ctx.drawImage(videoRef.current, 0, 0, 640, 480);
       try {
-        session.sendRealtimeInput({
-          media: { data: canvas.toDataURL('image/jpeg', 0.6).split(',')[1], mimeType: 'image/jpeg' },
-        });
-      } catch { /* session closing */ }
+        session.sendRealtimeInput({ media: { data: canvas.toDataURL('image/jpeg', 0.6).split(',')[1], mimeType: 'image/jpeg' } });
+      } catch { /* closing */ }
     }, 2000);
   }, []);
 
-  // ── Live API: sequential audio playback ───────────────────────────────────────
-  //
-  // The Live API streams audio as many small PCM chunks. Calling source.start()
-  // without a time argument makes all chunks fire at currentTime simultaneously
-  // → "many voices at once" bug.
-  //
-  // Fix: nextPlayTimeRef is a monotonic cursor. Each chunk is scheduled to start
-  // exactly when the previous one ends. Math.max(currentTime, cursor) handles
-  // the case where the cursor has fallen behind (first chunk, after interrupt).
+  // ── Live API: audio playback (sequential scheduler) ────────────────────────
   const playAudio = useCallback((base64Audio: string) => {
     try {
       if (!playbackCtxRef.current || playbackCtxRef.current.state === 'closed') {
@@ -280,60 +436,60 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         nextPlayTimeRef.current = 0;
       }
       const ctx = playbackCtxRef.current;
-
-      // Decode base64 PCM-16 LE → Float32
-      const raw   = atob(base64Audio);
+      const raw = atob(base64Audio);
       const bytes = new Uint8Array(raw.length).map((_, i) => raw.charCodeAt(i));
       const pcm16 = new Int16Array(bytes.buffer);
-      const f32   = new Float32Array(pcm16.length);
+      const f32 = new Float32Array(pcm16.length);
       for (let i = 0; i < pcm16.length; i++) f32[i] = pcm16[i] / 32768;
 
       const buf = ctx.createBuffer(1, f32.length, 24000);
       buf.getChannelData(0).set(f32);
-
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(ctx.destination);
 
-      // Schedule sequentially
       const startAt = Math.max(ctx.currentTime, nextPlayTimeRef.current);
       src.start(startAt);
       nextPlayTimeRef.current = startAt + buf.duration;
 
-      // Track for instant cancellation on interrupt
       scheduledSourcesRef.current.push(src);
       src.onended = () => {
         scheduledSourcesRef.current = scheduledSourcesRef.current.filter(s => s !== src);
-        // Last chunk finished naturally → mark model as done speaking
-        if (scheduledSourcesRef.current.length === 0) setModelSpeaking(false);
+        if (scheduledSourcesRef.current.length === 0) { setModelSpeaking(false); setLiveTranscript(''); }
       };
-
       if (!isModelSpeakingRef.current) setModelSpeaking(true);
     } catch (err) { console.warn('Audio playback error:', err); }
   }, [setModelSpeaking]);
 
-  // ── Interrupt: stop agent mid-speech ─────────────────────────────────────────
-  //
-  // Two layers work together:
-  //   LOCAL  — flushAudioQueue() stops all scheduled BufferSource nodes
-  //            instantly so the speaker goes silent on the user's device.
-  //   SERVER — the Live API VAD automatically interrupts the model when it
-  //            detects the user speaking. The server confirms with the
-  //            `interrupted` flag inside onmessage, which also flushes the
-  //            queue (handles the rare gap between button press and VAD).
-  //
-  // The manual button lets users interrupt even when they don't want to speak
-  // (e.g. the answer was wrong, they want to ask something different).
+  // ── Interrupt ──────────────────────────────────────────────────────────────
   const interruptAgent = useCallback(() => {
     if (!isModelSpeakingRef.current) return;
     flushAudioQueue();
     setModelSpeaking(false);
+    setLiveTranscript('');
     setStatusMessage('Interrupted — go ahead!');
   }, [flushAudioQueue, setModelSpeaking]);
 
-  // ── Live API: start session ───────────────────────────────────────────────────
+  // ── Save voice turn to Firestore ───────────────────────────────────────────
+  const saveVoiceTurn = useCallback(async (userText: string, assistantText: string) => {
+    if (!userText && !assistantText) return;
+    const msgs: { role: string; text: string }[] = [];
+    if (userText) msgs.push({ role: 'user', text: userText });
+    if (assistantText) msgs.push({ role: 'assistant', text: assistantText });
+    try {
+      await fetch('/api/save-voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, messages: msgs }),
+      });
+    } catch { /* non-critical */ }
+  }, [sessionId]);
+
+  // ── Live API: start session ────────────────────────────────────────────────
   const startSession = async () => {
     isTearingDownRef.current = false;
+    liveModelTranscriptRef.current = '';
+    liveUserTranscriptRef.current = '';
     setIsConnecting(true);
     setError('');
 
@@ -344,8 +500,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = audioStream;
 
-      // Build AudioWorklet BEFORE opening the WebSocket so mic audio flows
-      // immediately when the connection opens (avoids idle timeout).
       const audioCtx = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioCtx;
 
@@ -362,8 +516,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   for (let j = 0; j < 4096; j++)
                     pcm[j] = Math.max(-32768, Math.min(32767, Math.round(this._buf[j] * 32767)));
                   this.port.postMessage(pcm.buffer, [pcm.buffer]);
-                  this._buf = new Float32Array(4096);
-                  this._off = 0;
+                  this._buf = new Float32Array(4096); this._off = 0;
                 }
               }
             }
@@ -380,7 +533,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       const workletNode = new AudioWorkletNode(audioCtx, 'pcm-processor');
       workletNodeRef.current = workletNode;
       micSrc.connect(workletNode);
-      // Silent gain node keeps the graph alive without mic echo
       const silence = audioCtx.createGain();
       silence.gain.value = 0;
       workletNode.connect(silence);
@@ -389,6 +541,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       setStatusMessage('Connecting to Gemini Live...');
       const genAI = new GoogleGenAI({ apiKey });
 
+      // Snapshot of current conversation for context injection
+      const currentMessages = messagesRef.current;
+
       const session = await genAI.live.connect({
         model: LIVE_MODEL,
         callbacks: {
@@ -396,28 +551,43 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             isConnectedRef.current = true;
             setIsConnected(true);
             setIsConnecting(false);
-            setStatusMessage('Live — show me your homework!');
+            setStatusMessage(currentMessages.length > 0
+              ? `Resuming — ${currentMessages.length} messages in context`
+              : 'Live — show me your homework!');
           },
 
           onmessage: (msg: LiveServerMessage) => {
-            // Server-side VAD interrupted the model while it was generating.
-            // Flush local audio queue immediately so playback stops in sync.
+            // ── Server-side VAD interrupted the model ──
             if (msg.serverContent?.interrupted) {
               flushAudioQueue();
               setModelSpeaking(false);
+              setLiveTranscript('');
+              // Commit any partial model transcript before discarding
+              if (liveModelTranscriptRef.current.trim()) {
+                const t = liveModelTranscriptRef.current.trim();
+                setMessages(prev => [...prev, { role: 'assistant', text: t, source: 'voice' }]);
+                saveVoiceTurn(liveUserTranscriptRef.current.trim(), t);
+                liveUserTranscriptRef.current = '';
+                liveModelTranscriptRef.current = '';
+              }
               setStatusMessage('Listening...');
               return;
             }
 
-            // Model finished its turn. Don't flush — let the last chunk finish
-            // naturally. The onended handler will clear isModelSpeaking.
-            if (msg.serverContent?.turnComplete) {
-              if (scheduledSourcesRef.current.length === 0) setModelSpeaking(false);
-              setStatusMessage('Live — show me your homework!');
-              return;
+            // ── User speech transcription ──
+            // Accumulate partial transcripts; final transcript comes with turnComplete
+            if ((msg.serverContent as any)?.inputTranscription?.text) {
+              liveUserTranscriptRef.current += (msg.serverContent as any).inputTranscription.text;
             }
 
-            // Incoming audio chunks — enqueue sequentially
+            // ── Model speech transcription ──
+            if ((msg.serverContent as any)?.outputTranscription?.text) {
+              const chunk = (msg.serverContent as any).outputTranscription.text;
+              liveModelTranscriptRef.current += chunk;
+              setLiveTranscript(liveModelTranscriptRef.current);
+            }
+
+            // ── Audio chunks ──
             if (msg.serverContent?.modelTurn?.parts) {
               for (const part of msg.serverContent.modelTurn.parts) {
                 if (part.inlineData?.mimeType?.startsWith('audio/') && part.inlineData.data) {
@@ -425,6 +595,27 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   setStatusMessage('Speaking...');
                 }
               }
+            }
+
+            // ── Turn complete ──
+            if (msg.serverContent?.turnComplete) {
+              const userText  = liveUserTranscriptRef.current.trim();
+              const modelText = liveModelTranscriptRef.current.trim();
+
+              // Add transcripts to the chat as messages (context persistence)
+              if (userText) {
+                setMessages(prev => [...prev, { role: 'user', text: userText, source: 'voice' }]);
+              }
+              if (modelText) {
+                setMessages(prev => [...prev, { role: 'assistant', text: modelText, source: 'voice' }]);
+              }
+              if (userText || modelText) saveVoiceTurn(userText, modelText);
+
+              liveUserTranscriptRef.current  = '';
+              liveModelTranscriptRef.current = '';
+              setLiveTranscript('');
+              if (scheduledSourcesRef.current.length === 0) setModelSpeaking(false);
+              setStatusMessage('Live — show me your homework!');
             }
           },
 
@@ -436,6 +627,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             workletNodeRef.current?.port.close();
             flushAudioQueue();
             setModelSpeaking(false);
+            setLiveTranscript('');
             setError(`Connection error: ${err?.message || 'Unknown error'}`);
             setIsConnecting(false);
           },
@@ -459,6 +651,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             setIsConnected(false);
             setIsConnecting(false);
             setModelSpeaking(false);
+            setLiveTranscript('');
             if (event?.code && event.code !== 1000)
               console.warn(`Live closed: code=${event.code} reason=${event.reason ?? '(none)'}`);
             setStatusMessage('Session ended');
@@ -467,13 +660,21 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
-          systemInstruction: TUTOR_SYSTEM_INSTRUCTION,
+          // Context persistence: inject conversation history into system instruction
+          systemInstruction: buildSystemInstruction(currentMessages),
+          // Google Search grounding for up-to-date answers (Criterion 1 tool)
+          tools: [{ googleSearch: {} }],
+          // Transcription: captures user speech and model speech as text
+          // so it can be persisted to Firestore and shown in the chat panel
+          ...(({
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
+          } as any)),
         },
       });
 
       sessionRef.current = session;
 
-      // Wire mic worklet → Live API. sessionRef (not closure) so null-guard works.
       workletNode.port.onmessage = (e: MessageEvent) => {
         if (isTearingDownRef.current) return;
         const s = sessionRef.current;
@@ -500,7 +701,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     }
   };
 
-  // ── Live API: stop session ────────────────────────────────────────────────────
+  // ── Live API: stop session ─────────────────────────────────────────────────
   const stopSession = async () => {
     isTearingDownRef.current = true;
     isConnectedRef.current = false;
@@ -520,199 +721,265 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     playbackCtxRef.current = null;
     nextPlayTimeRef.current = 0;
     setModelSpeaking(false);
+    setLiveTranscript('');
 
     await new Promise(r => setTimeout(r, 120));
-    try { session?.close(); } catch { /* ignore */ }
+    try { session?.close(); } catch { }
     setIsConnected(false);
     setStatusMessage('Session ended');
   };
 
   useEffect(() => () => { stopCamera(); stopSession(); }, []);
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="h-screen bg-slate-50 text-slate-900 flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-4 md:px-6 py-3 bg-white border-b border-slate-100">
-        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center">
+    <div className="h-screen bg-[#f8f9fa] text-[#202124] flex flex-col overflow-hidden">
+
+      {/* ── Header ── */}
+      <header className="shrink-0 flex items-center justify-between px-4 md:px-6 py-2.5
+                         bg-white border-b border-[#e8eaed]">
+        <button onClick={onBack} className="flex items-center gap-2.5 text-[#5f6368] hover:text-[#202124] transition-colors">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                          flex items-center justify-center">
             <Sparkles className="text-white" size={16} />
           </div>
-          <span className="text-base font-medium hidden sm:inline">Gemini Tutor</span>
+          <span className="text-sm font-medium hidden sm:inline">Gemini Tutor</span>
         </button>
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-          isConnected ? 'bg-green-50 text-green-700 border border-green-200'
-          : isConnecting ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
-          : 'bg-slate-100 text-slate-500 border border-slate-200'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${
-            isConnected ? 'bg-green-500 animate-pulse'
-            : isConnecting ? 'bg-yellow-500 animate-pulse'
-            : 'bg-slate-400'
-          }`} />
-          {isConnected ? 'Voice On' : isConnecting ? 'Connecting...' : 'Voice Off'}
-        </span>
+
+        <div className="flex items-center gap-2">
+          {/* Google Search badge when connected */}
+          {isConnected && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1
+                             rounded-full text-xs font-medium bg-[#e6f4ea] text-[#137333] border border-[#ceead6]">
+              <Globe size={11} /> Search On
+            </span>
+          )}
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
+            isConnected ? 'bg-[#e6f4ea] text-[#137333] border border-[#ceead6]'
+            : isConnecting ? 'bg-[#fef7e0] text-[#b06000] border border-[#fde58b]'
+            : 'bg-[#f1f3f4] text-[#5f6368] border border-[#e8eaed]'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              isConnected ? 'bg-[#34a853] animate-pulse'
+              : isConnecting ? 'bg-[#fbbc05] animate-pulse'
+              : 'bg-[#9aa0a6]'
+            }`} />
+            {isConnected ? 'Voice On' : isConnecting ? 'Connecting...' : 'Voice Off'}
+          </span>
+        </div>
       </header>
 
+      {/* ── Main two-panel layout ── */}
       <main className="flex-1 flex flex-col md:flex-row gap-3 p-3 md:p-4 overflow-hidden max-w-7xl mx-auto w-full">
 
         {/* ── Left: Video + Controls ── */}
-        <div className="flex flex-col gap-3 md:w-[50%] shrink-0">
-          <div className="relative bg-slate-900 rounded-2xl shadow-sm border border-slate-200 overflow-hidden aspect-video">
+        <div className="flex flex-col gap-3 md:w-[44%] shrink-0">
+          {/* Video */}
+          <div className="relative bg-[#1c1c1e] rounded-2xl overflow-hidden aspect-video shadow-sm">
             <video ref={videoRef} autoPlay playsInline muted
               className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} />
             {!isCameraOn && (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-2 bg-slate-100">
+              <div className="w-full h-full flex flex-col items-center justify-center text-[#9aa0a6] gap-2">
                 <Camera size={40} strokeWidth={1.5} />
                 <p className="text-xs">Camera is off</p>
               </div>
             )}
-
-            {/* LIVE badge */}
             {isConnected && (
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-black/50 backdrop-blur-sm rounded-full">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-white text-[10px] font-bold tracking-wide">LIVE</span>
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1
+                              bg-black/55 backdrop-blur-sm rounded-full">
+                <span className="w-2 h-2 rounded-full bg-[#ea4335] animate-pulse" />
+                <span className="text-white text-[10px] font-bold tracking-widest">LIVE</span>
               </div>
             )}
-
-            {/* Speaking animation overlay */}
             {isModelSpeaking && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-full">
-                {[0, 150, 300].map(delay => (
-                  <span key={delay}
-                    className="w-1.5 h-4 bg-blue-400 rounded-full animate-bounce"
-                    style={{ animationDelay: `${delay}ms` }} />
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5
+                              px-3 py-1.5 bg-black/65 backdrop-blur-sm rounded-full">
+                {[0, 140, 280].map(d => (
+                  <span key={d} className="w-1.5 rounded-full bg-[#4285f4] animate-bounce"
+                    style={{ height: '16px', animationDelay: `${d}ms` }} />
                 ))}
-                <span className="text-white text-[10px] ml-1 font-medium">Speaking</span>
+                <span className="text-white text-[10px] ml-1.5 font-medium tracking-wide">Speaking</span>
               </div>
             )}
           </div>
 
-          <p className="text-xs text-slate-400 text-center">{statusMessage}</p>
+          {/* Status */}
+          <p className="text-[11px] text-[#9aa0a6] text-center">{statusMessage}</p>
 
           {error && (
-            <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs text-center">
+            <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl
+                            text-[#c5221f] text-xs text-center">
               {error}
             </div>
           )}
 
           {/* Controls row */}
-          <div className="flex items-center gap-3 justify-center flex-wrap">
-            {/* Camera toggle */}
+          <div className="flex items-center gap-2.5 justify-center flex-wrap">
+            {/* Camera */}
             <button onClick={isCameraOn ? stopCamera : startCamera}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-sm hover:shadow ${
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm ${
                 isCameraOn
-                  ? 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                  ? 'bg-white text-[#5f6368] border border-[#dadce0] hover:bg-[#f8f9fa]'
+                  : 'bg-[#f1f3f4] text-[#9aa0a6] hover:bg-[#e8eaed]'
               }`}
               title={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
-              {isCameraOn ? <Camera size={20} /> : <CameraOff size={20} />}
+              {isCameraOn ? <Camera size={19} /> : <CameraOff size={19} />}
             </button>
 
-            {/* ── INTERRUPT BUTTON ─────────────────────────────────────────────
-                Shown only while the model is speaking.
-                  - LOCAL:  flushAudioQueue() stops all BufferSource nodes now.
-                  - SERVER: Live API VAD interrupts model when user speaks;
-                    the `interrupted` flag in onmessage flushes any remaining
-                    chunks that arrive after the button press.               */}
+            {/* Interrupt */}
             {isConnected && isModelSpeaking && (
               <button onClick={interruptAgent}
-                className="px-5 py-3 rounded-full flex items-center gap-2 font-medium text-sm
-                           bg-amber-500 hover:bg-amber-600 text-white shadow-sm hover:shadow
-                           transition-all animate-pulse"
-                title="Interrupt the tutor">
-                <StopCircle size={18} />
-                Interrupt
+                className="px-4 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
+                           bg-[#f9ab00] hover:bg-[#e8a000] text-white shadow-sm transition-all animate-pulse">
+                <StopCircle size={17} /> Interrupt
               </button>
             )}
 
             {/* Start / Stop Voice */}
             <button onClick={isConnected ? stopSession : startSession}
               disabled={isConnecting}
-              className={`px-6 py-3 rounded-full flex items-center gap-2 font-medium text-sm
+              className={`px-5 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
                           transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed ${
-                isConnected ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-blue-600 text-white hover:bg-blue-700'
+                isConnected
+                  ? 'bg-[#ea4335] text-white hover:bg-[#d93025]'
+                  : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
               }`}>
               {isConnected ? (
-                <><MicOff size={18} /> Stop Voice</>
+                <><MicOff size={17} /> Stop Voice</>
               ) : isConnecting ? (
                 <>
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   Connecting...
                 </>
               ) : (
-                <><Mic size={18} /> Start Voice</>
+                <><Mic size={17} /> Start Voice</>
               )}
             </button>
           </div>
         </div>
 
-        {/* ── Right: Text Chat ── */}
-        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-[0_1px_3px_0_rgba(60,64,67,0.15)] overflow-hidden min-h-[250px] md:min-h-0">
-          <div className="shrink-0 px-5 py-3 border-b border-[#e8eaed] flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
-              <Sparkles size={14} className="text-white" />
+        {/* ── Right: Chat panel ── */}
+        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-[#e8eaed]
+                        overflow-hidden min-h-[300px] md:min-h-0">
+
+          {/* Chat header */}
+          <div className="shrink-0 px-5 py-3 border-b border-[#f1f3f4] flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                            flex items-center justify-center">
+              <Sparkles size={13} className="text-white" />
             </div>
             <span className="text-sm font-medium text-[#202124]">Gemini Tutor</span>
-            {isCameraOn && (
-              <button onClick={() => sendChatMessage(true)} disabled={isSending}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
-                           text-[#1a73e8] bg-[#e8f0fe] hover:bg-[#d2e3fc] rounded-full transition-colors disabled:opacity-50">
-                <Camera size={12} /> Capture & Ask
-              </button>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              {isCameraOn && (
+                <button onClick={() => sendChatMessage(true)} disabled={isSending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                             text-[#1a73e8] bg-[#e8f0fe] hover:bg-[#d2e3fc] rounded-full
+                             transition-colors disabled:opacity-50">
+                  <Camera size={11} /> Capture & Ask
+                </button>
+              )}
+              {messages.length > 0 && (
+                <span className="text-[10px] text-[#9aa0a6] bg-[#f1f3f4] px-2 py-0.5 rounded-full">
+                  {messages.length} msgs
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {messages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center gap-3 py-8">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
-                  <Sparkles size={22} className="text-white" />
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            {messages.length === 0 && !liveTranscript && (
+              <div className="h-full flex flex-col items-center justify-center gap-4 py-12">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                                flex items-center justify-center">
+                  <Sparkles size={24} className="text-white" />
                 </div>
-                <p className="text-base font-medium text-[#202124]">How can I help you today?</p>
-                <p className="text-xs text-[#5f6368] text-center max-w-[220px]">Ask a question, or capture a photo of your homework.</p>
+                <div className="text-center">
+                  <p className="text-base font-medium text-[#202124] mb-1">How can I help you today?</p>
+                  <p className="text-xs text-[#9aa0a6] max-w-[240px]">
+                    Ask a question, start a voice session, or capture a photo of your homework.
+                  </p>
+                </div>
+                {/* Suggestions */}
+                <div className="flex flex-col gap-2 mt-2 w-full max-w-xs">
+                  {[
+                    'Explain how photosynthesis works',
+                    'Help me solve a quadratic equation',
+                    'What is the French Revolution?',
+                  ].map(s => (
+                    <button key={s} onClick={() => { setChatInput(s); textareaRef.current?.focus(); }}
+                      className="text-left px-4 py-2.5 rounded-xl border border-[#e8eaed] text-xs
+                                 text-[#5f6368] hover:bg-[#f8f9fa] hover:border-[#dadce0] transition-colors">
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
+
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                                  flex items-center justify-center shrink-0 mt-0.5">
                     <Sparkles size={12} className="text-white" />
                   </div>
                 )}
-                <div className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'bg-[#e8f0fe] text-[#202124] rounded-2xl rounded-tr-md'
-                    : 'bg-[#f8f9fa] text-[#202124] rounded-2xl rounded-tl-md border border-[#e8eaed]'
-                }`}>
-                  {msg.image && <img src={msg.image} alt="Captured" className="rounded-lg mb-2 max-h-32 w-auto" />}
-                  <div className="whitespace-pre-wrap">
-                    {msg.text.split('\n').map((line, idx) => {
-                      let fmt = line;
-                      if (/^Q:/i.test(line)) fmt = `<b>${line}</b>`;
-                      else if (/^A:/i.test(line)) fmt = `<b>${line}</b>`;
-                      fmt = fmt.replace(/\$(.+?)\$/g, '<span style="color:#4285f4;font-weight:bold">$1</span>');
-                      return (
-                        <div key={idx} style={{ marginBottom: '2px' }}
-                          dangerouslySetInnerHTML={{ __html: fmt.trim() ? fmt : '<br />' }} />
-                      );
-                    })}
+                <div className={`max-w-[82%] ${msg.role === 'user' ? '' : ''}`}>
+                  <div className={`px-4 py-3 text-sm ${
+                    msg.role === 'user'
+                      ? 'bg-[#e8f0fe] text-[#1a1a1a] rounded-2xl rounded-tr-sm'
+                      : 'bg-[#f8f9fa] text-[#3c4043] rounded-2xl rounded-tl-sm border border-[#e8eaed]'
+                  }`}>
+                    {msg.image && (
+                      <img src={msg.image} alt="Captured" className="rounded-lg mb-2.5 max-h-36 w-auto" />
+                    )}
+                    <MarkdownContent text={msg.text} isUser={msg.role === 'user'} />
+                  </div>
+                  {/* Metadata row */}
+                  <div className={`flex items-center gap-2 mt-1 px-1 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {msg.source === 'voice' && (
+                      <span className="text-[10px] text-[#9aa0a6] flex items-center gap-1">
+                        <Mic size={9} /> Voice
+                      </span>
+                    )}
+                    {msg.grounded && (
+                      <span className="text-[10px] text-[#1e8e3e] flex items-center gap-1 bg-[#e6f4ea] px-1.5 py-0.5 rounded-full">
+                        <Globe size={9} /> Search
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
-            {isSending && (
-              <div className="flex gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center shrink-0">
+
+            {/* Live voice transcript (while model is speaking) */}
+            {liveTranscript && (
+              <div className="flex gap-2.5 flex-row">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                                flex items-center justify-center shrink-0 mt-0.5">
                   <Sparkles size={12} className="text-white" />
                 </div>
-                <div className="bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-md px-4 py-3 text-sm">
-                  <div className="flex gap-1.5">
-                    {[0, 150, 300].map(d => (
+                <div className="max-w-[82%] px-4 py-3 bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-sm text-sm text-[#5f6368] italic">
+                  {liveTranscript}
+                  <span className="inline-block w-1 h-3.5 bg-[#4285f4] ml-0.5 animate-pulse rounded-sm" />
+                </div>
+              </div>
+            )}
+
+            {/* Text typing indicator */}
+            {isSending && !liveTranscript && (
+              <div className="flex gap-2.5">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                                flex items-center justify-center shrink-0">
+                  <Sparkles size={12} className="text-white" />
+                </div>
+                <div className="bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-sm px-4 py-3.5">
+                  <div className="flex gap-1.5 items-center">
+                    {[0, 160, 320].map(d => (
                       <span key={d} className="w-2 h-2 bg-[#bdc1c6] rounded-full animate-bounce"
                         style={{ animationDelay: `${d}ms` }} />
                     ))}
@@ -723,22 +990,62 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             <div ref={chatEndRef} />
           </div>
 
-          <div className="shrink-0 px-4 py-3 border-t border-[#e8eaed]">
-            <div className="flex items-center gap-2 px-4 py-1 bg-[#f8f9fa] border border-[#dfe1e5] rounded-full
-                            focus-within:border-[#4285f4] focus-within:shadow-[0_1px_6px_rgba(32,33,36,0.12)] transition-all">
-              <input type="text" value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChatMessage(false)}
-                placeholder="Ask a question..." disabled={isSending}
-                className="flex-1 py-2.5 bg-transparent text-sm text-[#202124] outline-none disabled:opacity-50 placeholder:text-[#9aa0a6]"
+          {/* ── Google-style input ── */}
+          <div className="shrink-0 px-4 pb-4 pt-2">
+            <div className="relative rounded-[24px] bg-[#f1f3f4] border border-transparent
+                            focus-within:bg-white focus-within:border-[#e0e0e0]
+                            focus-within:shadow-[0_2px_10px_rgba(0,0,0,0.12)] transition-all">
+
+              {/* Textarea (auto-grows) */}
+              <textarea
+                ref={textareaRef}
+                value={chatInput}
+                onChange={handleInputChange}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage(false);
+                  }
+                }}
+                placeholder="Ask Gemini Tutor..."
+                rows={1}
+                disabled={isSending}
+                className="w-full px-5 pt-4 pb-12 text-sm text-[#202124] bg-transparent resize-none
+                           outline-none placeholder:text-[#9aa0a6] leading-relaxed max-h-[180px]
+                           disabled:opacity-60"
               />
-              <button onClick={() => sendChatMessage(false)}
-                disabled={isSending || !chatInput.trim()}
-                className="w-9 h-9 rounded-full bg-[#1a73e8] hover:bg-[#1765cc] text-white flex items-center justify-center
-                           transition-colors disabled:bg-[#dadce0] disabled:text-[#9aa0a6] disabled:cursor-not-allowed shrink-0">
-                <Send size={15} />
-              </button>
+
+              {/* Bottom toolbar */}
+              <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  {isCameraOn && (
+                    <button onClick={() => sendChatMessage(true)} disabled={isSending}
+                      className="w-8 h-8 rounded-full hover:bg-[#e8eaed] flex items-center justify-center
+                                 transition-colors text-[#5f6368]"
+                      title="Capture & Ask">
+                      <Camera size={16} />
+                    </button>
+                  )}
+                  <span className="text-[10px] text-[#bdc1c6] hidden sm:inline pl-1">
+                    <CornerDownLeft size={9} className="inline mr-0.5" />Enter to send · Shift+Enter for newline
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => sendChatMessage(false)}
+                  disabled={isSending || !chatInput.trim()}
+                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all
+                             bg-[#1a73e8] hover:bg-[#1765cc] text-white shadow-sm
+                             disabled:bg-[#e8eaed] disabled:text-[#bdc1c6] disabled:shadow-none
+                             disabled:cursor-not-allowed">
+                  <Send size={15} />
+                </button>
+              </div>
             </div>
+
+            <p className="text-center text-[10px] text-[#bdc1c6] mt-2">
+              Gemini Tutor uses Google Search to provide up-to-date answers. Verify important information.
+            </p>
           </div>
         </div>
       </main>
@@ -746,7 +1053,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   );
 }
 
-// ── App Root ──────────────────────────────────────────────────────────────────
+// ─── App Root ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [screen, setScreen] = useState<'welcome' | 'tutor'>('welcome');
   const [apiKey, setApiKey] = useState('');

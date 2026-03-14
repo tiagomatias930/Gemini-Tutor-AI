@@ -31,7 +31,7 @@ app.use(express.json({ limit: '10mb' }));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GCP_PROJECT = process.env.GOOGLE_CLOUD_PROJECT || '';
-const MODEL_NAME = 'gemini-3.1-flash-lite-preview';
+const MODEL_NAME = 'gemini-2.5-flash-lite';
 
 if (!GEMINI_API_KEY) {
   console.error('❌ GEMINI_API_KEY is not set.');

@@ -1,30 +1,34 @@
+
 # Gemini Tutor AI
 
-AI-powered homework assistant — point your camera, use your voice, or type to learn with an AI tutor built on Google Gemini.
+An AI-powered homework assistant — point your camera, use your voice, or type to learn interactively with an AI tutor built on Google Gemini.
 
 ![React](https://img.shields.io/badge/React-19-blue) ![Vite](https://img.shields.io/badge/Vite-6-purple) ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-cyan) ![Express](https://img.shields.io/badge/Express-4-green) ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue) ![Cloud Run](https://img.shields.io/badge/Google_Cloud-Run-orange)
 
 ---
 
+
 ## English
 
 ### Overview
 
-Gemini Tutor is a full-stack web application that acts as a patient AI tutor. It helps students understand problems step-by-step without giving direct answers — encouraging them to discover solutions on their own. It supports:
+Gemini Tutor is a full-stack web application that acts as a patient AI tutor. It helps students understand problems step by step, without giving direct answers — encouraging them to discover solutions on their own. Features include:
 
-- **Camera Vision** — point your camera at homework and get guidance
+- **Camera Vision** — point your camera at your homework and get guidance
 - **Voice Chat** — talk to the tutor using your microphone
 - **Text Chat** — classic text conversation with image upload support
 - **Multilingual** — responds in the same language the student uses
 
+
 ### Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 19, Vite 6, Tailwind CSS 4, Lucide Icons, Motion |
-| Backend | Node.js, Express 4, TypeScript, tsx |
-| AI | Google Gemini (`gemini-3.1-flash-lite-preview`) via Vertex AI or `@google/genai` |
-| Deploy | Docker, Google Cloud Run, Cloud Build |
+| Layer     | Technology                                                                 |
+|-----------|----------------------------------------------------------------------------|
+| Frontend  | React 19, Vite 6, Tailwind CSS 4, Lucide Icons, Motion                      |
+| Backend   | Node.js, Express 4, TypeScript, tsx                                         |
+| AI        | Google Gemini (`gemini-3.1-flash-lite-preview`) via Vertex AI or `@google/genai` |
+| Deploy    | Docker, Google Cloud Run, Cloud Build                                       |
+
 
 ### Project Structure
 
@@ -46,11 +50,13 @@ Gemini-Tutor-AI/
 └── README.md
 ```
 
+
 ### Prerequisites
 
 - Node.js 18+
 - npm 9+
 - A Gemini API key ([get one here](https://aistudio.google.com/apikey)) **or** a Google Cloud project with Vertex AI enabled
+
 
 ### Installation
 
@@ -67,7 +73,9 @@ cd server
 npm install
 ```
 
+
 ### Environment Variables
+
 
 Create a `.env` file in the project root:
 
@@ -80,9 +88,12 @@ GOOGLE_CLOUD_PROJECT=your_project_id
 GOOGLE_CLOUD_LOCATION=us-central1
 ```
 
+
 > The backend tries Vertex AI first (if `GOOGLE_CLOUD_PROJECT` is set), otherwise falls back to the API key.
 
+
 ### Run in Development
+
 
 Open two terminals:
 
@@ -100,6 +111,7 @@ npm run dev
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
 
+
 ### API Endpoints
 
 | Method | Path | Description |
@@ -107,6 +119,7 @@ npm run dev
 | `GET` | `/api/health` | Health check (returns status, mode, timestamp) |
 | `POST` | `/api/chat` | Send a message (with optional `image` base64 and `history` array) |
 | `POST` | `/api/analyze` | Send a homework image for analysis |
+
 
 #### Example: `/api/chat`
 
@@ -122,6 +135,7 @@ POST /api/chat
 }
 ```
 
+
 ### Build for Production
 
 ```bash
@@ -136,6 +150,7 @@ npm run build
 cd server
 npm run start
 ```
+
 
 ### Deploy to Google Cloud Run
 
@@ -157,7 +172,9 @@ This will:
 3. Deploy to Cloud Run (512Mi RAM, 1 CPU, 0–3 instances)
 4. Print the live URL
 
+
 ### Available Scripts
+
 
 #### Frontend (root)
 
@@ -169,6 +186,7 @@ This will:
 | `clean` | `rm -rf dist` | Remove build output |
 | `lint` | `tsc --noEmit` | TypeScript type checking |
 
+
 #### Backend (`server/`)
 
 | Script | Command | Description |
@@ -177,7 +195,9 @@ This will:
 | `build` | `tsc` | Compile TypeScript |
 | `start` | `node dist/index.js` | Run compiled server |
 
+
 ---
+
 
 ## Português
 
@@ -185,19 +205,21 @@ This will:
 
 O Gemini Tutor é uma aplicação web full-stack que funciona como um tutor de IA paciente. Ajuda estudantes a compreender problemas passo a passo, sem dar respostas diretas — incentivando-os a descobrir as soluções por conta própria. Suporta:
 
-- **Visão por Câmara** — aponta a câmara para os trabalhos de casa e recebe orientação
-- **Chat por Voz** — fala com o tutor usando o microfone
+- **Visão por Câmera** — aponte a câmera para o dever de casa e receba orientação
+- **Chat por Voz** — fale com o tutor usando o microfone
 - **Chat por Texto** — conversa clássica por texto com suporte a upload de imagens
-- **Multilingue** — responde no mesmo idioma que o estudante utiliza
+- **Multilíngue** — responde no mesmo idioma que o estudante utiliza
+
 
 ### Stack Tecnológica
 
-| Camada | Tecnologia |
-|--------|------------|
-| Frontend | React 19, Vite 6, Tailwind CSS 4, Lucide Icons, Motion |
-| Backend | Node.js, Express 4, TypeScript, tsx |
-| IA | Google Gemini (`gemini-3.1-flash-lite-preview`) via Vertex AI ou `@google/genai` |
-| Deploy | Docker, Google Cloud Run, Cloud Build |
+| Camada   | Tecnologia                                                                 |
+|----------|----------------------------------------------------------------------------|
+| Frontend | React 19, Vite 6, Tailwind CSS 4, Lucide Icons, Motion                      |
+| Backend  | Node.js, Express 4, TypeScript, tsx                                         |
+| IA       | Google Gemini (`gemini-3.1-flash-lite-preview`) via Vertex AI ou `@google/genai` |
+| Deploy   | Docker, Google Cloud Run, Cloud Build                                       |
+
 
 ### Estrutura do Projeto
 
@@ -219,11 +241,13 @@ Gemini-Tutor-AI/
 └── README.md
 ```
 
+
 ### Pré-requisitos
 
 - Node.js 18+
 - npm 9+
-- Uma chave de API do Gemini ([obter aqui](https://aistudio.google.com/apikey)) **ou** um projeto Google Cloud com Vertex AI ativado
+- Uma chave de API do Gemini ([obtenha aqui](https://aistudio.google.com/apikey)) **ou** um projeto Google Cloud com Vertex AI ativado
+
 
 ### Instalação
 
@@ -240,9 +264,11 @@ cd server
 npm install
 ```
 
+
 ### Variáveis de Ambiente
 
-Cria um ficheiro `.env` na raiz do projeto:
+
+Crie um arquivo `.env` na raiz do projeto:
 
 ```env
 # Opção A: Desenvolvimento local com chave de API
@@ -253,11 +279,14 @@ GOOGLE_CLOUD_PROJECT=seu_project_id
 GOOGLE_CLOUD_LOCATION=us-central1
 ```
 
+
 > O backend tenta Vertex AI primeiro (se `GOOGLE_CLOUD_PROJECT` estiver definido), caso contrário usa a chave de API.
+
 
 ### Executar em Desenvolvimento
 
-Abre dois terminais:
+
+Abra dois terminais:
 
 ```bash
 # Terminal 1 — Frontend (servidor Vite na porta 3000)
@@ -273,6 +302,7 @@ npm run dev
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
 
+
 ### Endpoints da API
 
 | Método | Rota | Descrição |
@@ -280,6 +310,7 @@ npm run dev
 | `GET` | `/api/health` | Health check (devolve status, modo, timestamp) |
 | `POST` | `/api/chat` | Enviar mensagem (com `image` base64 e `history` opcionais) |
 | `POST` | `/api/analyze` | Enviar imagem de trabalho de casa para análise |
+
 
 #### Exemplo: `/api/chat`
 
@@ -294,6 +325,7 @@ POST /api/chat
   ]
 }
 ```
+
 
 ### Build para Produção
 
@@ -310,27 +342,32 @@ cd server
 npm run start
 ```
 
+
 ### Deploy no Google Cloud Run
 
-Pré-requisitos:
-1. Instalar [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
-2. Autenticar: `gcloud auth login`
-3. Definir o projeto: `gcloud config set project SEU_PROJECT_ID`
 
-Depois executa:
+Pré-requisitos:
+1. Instale o [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
+2. Autentique-se: `gcloud auth login`
+3. Defina o projeto: `gcloud config set project SEU_PROJECT_ID`
+
+Depois execute:
 
 ```bash
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-Isto vai:
+
+Isso irá:
 1. Ativar as APIs necessárias do GCP (Cloud Run, Cloud Build, Vertex AI)
 2. Construir um container Docker via Cloud Build
 3. Fazer deploy no Cloud Run (512Mi RAM, 1 CPU, 0–3 instâncias)
-4. Mostrar o URL em produção
+4. Exibir o URL em produção
+
 
 ### Scripts Disponíveis
+
 
 #### Frontend (raiz)
 
@@ -341,6 +378,7 @@ Isto vai:
 | `preview` | `vite preview` | Pré-visualizar build |
 | `clean` | `rm -rf dist` | Remover output de build |
 | `lint` | `tsc --noEmit` | Verificação de tipos TypeScript |
+
 
 #### Backend (`server/`)
 

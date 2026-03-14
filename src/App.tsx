@@ -21,8 +21,8 @@ Your role is to:
 Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
-const TEXT_MODEL  = 'gemini-2.0-flash';
-const IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation';
+const TEXT_MODEL  = 'gemini-2.5-flash';
+const IMAGE_MODEL = 'gemini-2.5-flash-preview-image-generation';
 const LIVE_MODEL  = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 // Topics where generating a visual diagram is highly beneficial

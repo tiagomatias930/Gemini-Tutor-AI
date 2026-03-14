@@ -35,11 +35,11 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GCP_PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || '';
 
 // Text + reasoning model (supports Google Search grounding)
-const TEXT_MODEL  = 'gemini-2.0-flash';
+const TEXT_MODEL  = 'gemini-2.5-flash';
 // Image generation model — produces images from text prompts.
 // Used to satisfy the hackathon requirement: "leverage... the creative power
 // of video/image generation" alongside the Gemini Live API.
-const IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation';
+const IMAGE_MODEL = 'gemini-2.5-flash-preview-image-generation';
 
 if (!GEMINI_API_KEY) {
   console.error('❌  GEMINI_API_KEY is not set. Get one at https://aistudio.google.com/apikey');

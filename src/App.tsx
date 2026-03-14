@@ -3,7 +3,7 @@ import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import {
   Mic, MicOff, Sparkles, Camera, CameraOff,
   BookOpen, ArrowRight, Volume2, MessageSquare,
-  StopCircle, Send, Globe, CornerDownLeft,
+  StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn,
 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -20,20 +20,28 @@ Your role is to:
 - Respond in the same language the student uses
 Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
 
-const TEXT_MODEL = 'gemini-2.5-flash';          // supports googleSearch
-const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
+// Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
+const TEXT_MODEL  = 'gemini-2.0-flash';
+const IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation';
+const LIVE_MODEL  = 'gemini-2.5-flash-native-audio-preview-12-2025';
+
+// Topics where generating a visual diagram is highly beneficial
+const VISUAL_TOPIC_RE = /\b(explain|how does|how do|what is|describe|show|draw|diagram|illustrate|visualize|cycle|process|system|structure|anatomy|cell|molecule|atom|circuit|photosynthesis|mitosis|meiosis|krebs|dna|protein|evolution|ecosystem|solar system|water cycle|carbon cycle|nitrogen cycle|food chain|neural network|algorithm|data structure|sorting|equation|geometry|triangle|function|derivative|integral|wave|gravity|quantum|thermodynamics|osmosis|diffusion|respiration|digestion|heart|brain|lung|skeleton|muscle|revolution|empire|civilization|volcano|earthquake|plate tectonic|weather|ocean|atmosphere|electromagnetic)\b/i;
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
-  image?: string;
+  image?: string;            // user-captured camera frame
   source?: 'text' | 'voice';
-  grounded?: boolean; // true when answer used Google Search
+  grounded?: boolean;
+  // Generated image fields — populated by Gemini image generation
+  generatedImage?: string;   // base64 of AI-generated illustration
+  generatedImageMime?: string;
+  imageCaption?: string;
+  isGeneratingImage?: boolean;
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
-// Renders the most common Gemini output patterns: bold, italic, inline code,
-// code blocks, headers, bullet lists, numbered lists, and $math$ highlights.
 
 function renderInline(text: string): React.ReactNode[] {
   const parts = text.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*|\$[^$\n]+\$)/g);
@@ -54,49 +62,26 @@ function MarkdownContent({ text, isUser }: { text: string; isUser: boolean }) {
   const lines = text.split('\n');
   const nodes: React.ReactNode[] = [];
   let i = 0;
-
   while (i < lines.length) {
     const line = lines[i];
-
-    // ── Code block ──────────────────────────────────────────────────────────
     if (line.startsWith('```')) {
       const codeLines: string[] = [];
       i++;
       while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++; }
-      nodes.push(
-        <pre key={`cb-${i}`} className="bg-[#1e1e2e] text-[#cdd6f4] rounded-xl p-4 my-2 overflow-x-auto text-xs font-mono leading-relaxed border border-[#313244]">
-          <code>{codeLines.join('\n')}</code>
-        </pre>
-      );
+      nodes.push(<pre key={`cb-${i}`} className="bg-[#1e1e2e] text-[#cdd6f4] rounded-xl p-4 my-2 overflow-x-auto text-xs font-mono leading-relaxed border border-[#313244]"><code>{codeLines.join('\n')}</code></pre>);
       i++; continue;
     }
-
-    // ── Headings ────────────────────────────────────────────────────────────
-    if (line.startsWith('### ')) {
-      nodes.push(<h3 key={i} className="text-sm font-semibold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(4))}</h3>);
-      i++; continue;
-    }
-    if (line.startsWith('## ')) {
-      nodes.push(<h2 key={i} className="text-base font-bold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(3))}</h2>);
-      i++; continue;
-    }
-    if (line.startsWith('# ')) {
-      nodes.push(<h1 key={i} className="text-lg font-bold mt-4 mb-2 text-[#202124]">{renderInline(line.slice(2))}</h1>);
-      i++; continue;
-    }
-
-    // ── Bullet list ──────────────────────────────────────────────────────────
+    if (line.startsWith('### ')) { nodes.push(<h3 key={i} className="text-sm font-semibold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(4))}</h3>); i++; continue; }
+    if (line.startsWith('## '))  { nodes.push(<h2 key={i} className="text-base font-bold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(3))}</h2>); i++; continue; }
+    if (line.startsWith('# '))   { nodes.push(<h1 key={i} className="text-lg font-bold mt-4 mb-2 text-[#202124]">{renderInline(line.slice(2))}</h1>); i++; continue; }
     if (line.match(/^[-*•]\s/)) {
       const items: React.ReactNode[] = [];
       while (i < lines.length && lines[i].match(/^[-*•]\s/)) {
         items.push(<li key={i} className="flex gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#5f6368] shrink-0" /><span>{renderInline(lines[i].replace(/^[-*•]\s/, ''))}</span></li>);
         i++;
       }
-      nodes.push(<ul key={`ul-${i}`} className="space-y-1 my-2">{items}</ul>);
-      continue;
+      nodes.push(<ul key={`ul-${i}`} className="space-y-1 my-2">{items}</ul>); continue;
     }
-
-    // ── Numbered list ────────────────────────────────────────────────────────
     if (line.match(/^\d+\.\s/)) {
       const items: React.ReactNode[] = [];
       let n = 1;
@@ -104,35 +89,85 @@ function MarkdownContent({ text, isUser }: { text: string; isUser: boolean }) {
         items.push(<li key={i} className="flex gap-2"><span className="shrink-0 text-[#5f6368] font-medium w-5 text-right">{n}.</span><span>{renderInline(lines[i].replace(/^\d+\.\s/, ''))}</span></li>);
         i++; n++;
       }
-      nodes.push(<ol key={`ol-${i}`} className="space-y-1 my-2">{items}</ol>);
-      continue;
+      nodes.push(<ol key={`ol-${i}`} className="space-y-1 my-2">{items}</ol>); continue;
     }
-
-    // ── Horizontal rule ──────────────────────────────────────────────────────
-    if (line.match(/^---+$/)) {
-      nodes.push(<hr key={i} className="my-3 border-[#e8eaed]" />);
-      i++; continue;
-    }
-
-    // ── Empty line ───────────────────────────────────────────────────────────
-    if (line.trim() === '') {
-      if (nodes.length > 0) nodes.push(<div key={`sp-${i}`} className="h-1.5" />);
-      i++; continue;
-    }
-
-    // ── Paragraph ────────────────────────────────────────────────────────────
-    nodes.push(
-      <p key={i} className={`leading-relaxed ${isUser ? '' : 'text-[#3c4043]'}`}>
-        {renderInline(line)}
-      </p>
-    );
+    if (line.match(/^---+$/)) { nodes.push(<hr key={i} className="my-3 border-[#e8eaed]" />); i++; continue; }
+    if (line.trim() === '') { if (nodes.length > 0) nodes.push(<div key={`sp-${i}`} className="h-1.5" />); i++; continue; }
+    nodes.push(<p key={i} className={`leading-relaxed ${isUser ? '' : 'text-[#3c4043]'}`}>{renderInline(line)}</p>);
     i++;
   }
-
   return <div className="space-y-px">{nodes}</div>;
 }
 
+// ─── Generated Image component ────────────────────────────────────────────────
+// Shows the AI-generated illustration with a lightbox on click.
+
+function GeneratedImageCard({
+  imageBase64, mimeType, caption,
+  onRegenerate, isRegenerating,
+}: {
+  imageBase64: string; mimeType: string; caption?: string;
+  onRegenerate?: () => void; isRegenerating?: boolean;
+}) {
+  const [lightbox, setLightbox] = useState(false);
+  const src = `data:${mimeType};base64,${imageBase64}`;
+
+  return (
+    <>
+      <div className="mt-3 rounded-xl overflow-hidden border border-[#e8eaed] bg-[#f8f9fa]">
+        <div className="relative group cursor-zoom-in" onClick={() => setLightbox(true)}>
+          <img src={src} alt="AI-generated illustration" className="w-full object-contain max-h-72" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+            <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+          </div>
+        </div>
+        <div className="px-3 py-2 flex items-start justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Palette size={11} className="text-[#9b72cb]" />
+              <span className="text-[10px] font-medium text-[#9b72cb]">AI Generated Illustration</span>
+            </div>
+            {caption && <p className="text-[11px] text-[#5f6368] leading-relaxed">{caption}</p>}
+          </div>
+          {onRegenerate && (
+            <button onClick={onRegenerate} disabled={isRegenerating}
+              className="shrink-0 text-[10px] text-[#1a73e8] hover:underline disabled:opacity-40 disabled:no-underline mt-0.5">
+              {isRegenerating ? 'Generating…' : 'Regenerate'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightbox(false)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white" onClick={() => setLightbox(false)}>
+            <X size={24} />
+          </button>
+          <img src={src} alt="AI-generated illustration" className="max-w-full max-h-full rounded-xl shadow-2xl object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Image generating skeleton ────────────────────────────────────────────────
+
+function ImageGeneratingSkeleton() {
+  return (
+    <div className="mt-3 rounded-xl border border-[#e8eaed] bg-[#f8f9fa] overflow-hidden">
+      <div className="h-40 bg-gradient-to-r from-[#f1f3f4] via-[#e8eaed] to-[#f1f3f4] animate-pulse" />
+      <div className="px-3 py-2 flex items-center gap-2">
+        <Palette size={11} className="text-[#9b72cb]" />
+        <span className="text-[10px] text-[#9aa0a6]">Generating illustration with Gemini…</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Welcome Screen ───────────────────────────────────────────────────────────
+
 function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
   const [apiKey, setApiKey] = useState(
     () => localStorage.getItem('gemini_api_key') || process.env.GEMINI_API_KEY || ''
@@ -154,8 +189,7 @@ function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
       </nav>
 
       <main className="flex-1 flex flex-col items-center justify-center px-4 -mt-12">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500
-                        flex items-center justify-center shadow-lg mb-8">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg mb-8">
           <Sparkles className="text-white" size={32} />
         </div>
 
@@ -167,26 +201,20 @@ function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
         </h1>
 
         <p className="text-lg text-slate-500 mb-10 text-center max-w-md">
-          Your AI-powered homework assistant — with web search, voice and camera.
+          Your AI-powered homework assistant — with voice, camera and AI-generated visuals.
         </p>
 
-        {/* Google Search-bar style input */}
         <div className="w-full max-w-xl">
-          <div className={`flex items-center gap-3 px-5 py-4 rounded-full bg-white
-                          border shadow-sm transition-all hover:shadow-md focus-within:shadow-[0_2px_12px_rgba(0,0,0,0.18)] ${
-                            error ? 'border-red-300' : 'border-[#dfe1e5]'
-                          }`}>
+          <div className={`flex items-center gap-3 px-5 py-4 rounded-full bg-white border shadow-sm transition-all hover:shadow-md focus-within:shadow-[0_2px_12px_rgba(0,0,0,0.18)] ${error ? 'border-red-300' : 'border-[#dfe1e5]'}`}>
             <BookOpen size={20} className="text-slate-400 shrink-0" />
-            <input
-              type="password" value={apiKey}
+            <input type="password" value={apiKey}
               onChange={e => { setApiKey(e.target.value); setError(''); }}
               onKeyDown={e => e.key === 'Enter' && handleStart()}
               placeholder="Paste your Gemini API Key here..."
               className="flex-1 outline-none text-base text-slate-700 placeholder:text-slate-400 bg-transparent"
             />
             <button onClick={handleStart}
-              className="w-10 h-10 rounded-full bg-[#1a73e8] hover:bg-[#1765cc] text-white
-                         flex items-center justify-center transition-colors shrink-0 shadow-sm">
+              className="w-10 h-10 rounded-full bg-[#1a73e8] hover:bg-[#1765cc] text-white flex items-center justify-center transition-colors shrink-0 shadow-sm">
               <ArrowRight size={18} />
             </button>
           </div>
@@ -195,14 +223,14 @@ function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
 
         <div className="flex flex-wrap gap-3 mt-8 justify-center">
           {[
-            { icon: Camera,       label: 'Camera Vision' },
-            { icon: Mic,          label: 'Voice Chat' },
-            { icon: Globe,        label: 'Web Search' },
+            { icon: Camera, label: 'Camera Vision' },
+            { icon: Mic, label: 'Voice Chat' },
+            { icon: Palette, label: 'AI Illustrations' },
+            { icon: Globe, label: 'Web Search' },
             { icon: MessageSquare, label: 'Text Chat' },
-            { icon: Volume2,      label: 'Audio Responses' },
+            { icon: Volume2, label: 'Audio Responses' },
           ].map(({ icon: Icon, label }) => (
-            <span key={label} className="flex items-center gap-2 px-4 py-2 bg-[#f8f9fa] rounded-full
-                                         text-sm text-[#5f6368] border border-[#e8eaed]">
+            <span key={label} className="flex items-center gap-2 px-4 py-2 bg-[#f8f9fa] rounded-full text-sm text-[#5f6368] border border-[#e8eaed]">
               <Icon size={15} />{label}
             </span>
           ))}
@@ -210,13 +238,14 @@ function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
       </main>
 
       <footer className="w-full text-center py-4 text-xs text-[#9aa0a6] border-t border-[#f1f3f4]">
-        Powered by Google Gemini · Google Search · Deployed on Google Cloud
+        Powered by Google Gemini · Live API · Image Generation · Google Cloud
       </footer>
     </div>
   );
 }
 
 // ─── Tutor Screen ─────────────────────────────────────────────────────────────
+
 function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void }) {
   // ── UI state ──────────────────────────────────────────────────────────────
   const [isConnected, setIsConnected]         = useState(false);
@@ -228,10 +257,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [messages, setMessages]               = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput]             = useState('');
   const [isSending, setIsSending]             = useState(false);
-  // Live partial transcript shown while model is speaking
   const [liveTranscript, setLiveTranscript]   = useState('');
 
-  // Criterion 3: session stored in Cloud Firestore via backend
+  // Criterion 3: Cloud Firestore session via backend
   const [sessionId] = useState(() => {
     const s = sessionStorage.getItem('tutor_session_id');
     if (s) return s;
@@ -240,7 +268,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     return id;
   });
 
-  // Load Firestore history on mount
   useEffect(() => {
     fetch(`/api/sessions/${sessionId}`)
       .then(r => r.ok ? r.json() : null)
@@ -264,16 +291,11 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const nextPlayTimeRef       = useRef<number>(0);
   const scheduledSourcesRef   = useRef<AudioBufferSourceNode[]>([]);
   const isModelSpeakingRef    = useRef(false);
-  // Context persistence: mirrors messages state so Live API callbacks can read it
   const messagesRef           = useRef<ChatMessage[]>([]);
-  // Accumulates voice transcript for the current model turn
   const liveModelTranscriptRef = useRef('');
-  // Accumulates user speech transcript
   const liveUserTranscriptRef  = useRef('');
 
-  // Keep messagesRef in sync
   useEffect(() => { messagesRef.current = messages; }, [messages]);
-
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, liveTranscript]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -289,20 +311,67 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     nextPlayTimeRef.current = 0;
   }, []);
 
-  // Build system instruction with conversation context for Live API reconnections.
-  // This is the key to "not forgetting context" — each new Live session receives
-  // a summary of what was already discussed.
   const buildSystemInstruction = useCallback((msgs: ChatMessage[]) => {
     if (!msgs.length) return TUTOR_SYSTEM_INSTRUCTION;
-    const summary = msgs.slice(-12)
-      .map(m => `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.text.slice(0, 250)}`)
-      .join('\n');
-    return `${TUTOR_SYSTEM_INSTRUCTION}
-
---- Conversation history (for continuity — do NOT repeat these, just remember them) ---
-${summary}
---- End of history ---`;
+    const summary = msgs.slice(-12).map(m => `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.text.slice(0, 200)}`).join('\n');
+    return `${TUTOR_SYSTEM_INSTRUCTION}\n\n--- Conversation history (remember, do NOT repeat) ---\n${summary}\n--- End ---`;
   }, []);
+
+  // ── Image generation ───────────────────────────────────────────────────────
+  // Called after text responses for visual topics, and also from the
+  // "Visualize" button on any assistant message.
+  const generateVisual = useCallback(async (concept: string, msgIndex: number) => {
+    // Mark message as generating
+    setMessages(prev => prev.map((m, i) => i === msgIndex ? { ...m, isGeneratingImage: true } : m));
+
+    try {
+      let imageBase64 = '';
+      let mimeType    = 'image/png';
+      let caption     = '';
+
+      // Try backend first (Cloud Run)
+      try {
+        const res = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ concept, context: messagesRef.current[msgIndex]?.text?.slice(0, 300) }),
+        });
+        if (!res.ok) throw new Error(`Backend ${res.status}`);
+        const data = await res.json();
+        imageBase64 = data.imageBase64;
+        mimeType    = data.mimeType;
+        caption     = data.caption;
+      } catch {
+        // Fallback: direct Gemini image generation from browser
+        if (!apiKey) throw new Error('Image generation unavailable.');
+        const genAI = new GoogleGenAI({ apiKey });
+        const response = await genAI.models.generateContent({
+          model: IMAGE_MODEL,
+          contents: `Create a clear, educational diagram or illustration for: "${concept}". White background, labeled, suitable for a student.`,
+          config: {
+            responseModalities: ['TEXT', 'IMAGE'] as any,
+          },
+        });
+        for (const part of (response.candidates?.[0]?.content?.parts || [])) {
+          if ((part as any).inlineData?.mimeType?.startsWith('image/')) {
+            imageBase64 = (part as any).inlineData.data || '';
+            mimeType    = (part as any).inlineData.mimeType;
+          } else if ((part as any).text) {
+            caption += (part as any).text;
+          }
+        }
+      }
+
+      setMessages(prev => prev.map((m, i) =>
+        i === msgIndex
+          ? { ...m, isGeneratingImage: false, generatedImage: imageBase64, generatedImageMime: mimeType, imageCaption: caption.trim() }
+          : m
+      ));
+    } catch (err: any) {
+      console.error('Image generation error:', err);
+      setMessages(prev => prev.map((m, i) => i === msgIndex ? { ...m, isGeneratingImage: false } : m));
+    }
+  }, [apiKey]);
 
   // ── Camera ─────────────────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
@@ -330,7 +399,6 @@ ${summary}
     return c.toDataURL('image/jpeg', 0.8);
   }, [isCameraOn]);
 
-  // ── Auto-grow textarea ─────────────────────────────────────────────────────
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setChatInput(e.target.value);
     const el = e.target;
@@ -340,7 +408,7 @@ ${summary}
 
   const resetTextarea = useCallback(() => {
     setChatInput('');
-    if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }, []);
 
   // ── Text Chat ──────────────────────────────────────────────────────────────
@@ -362,58 +430,86 @@ ${summary}
     setIsSending(true);
     setError('');
 
+    // Detect before the async call so we know the index to update
+    const shouldVisualise = VISUAL_TOPIC_RE.test(userMsg.text);
+
     try {
       let response = '';
       let grounded = false;
+      let autoImage: string | null = null;
+      let autoImageMime: string | null = null;
+      let autoCaption: string | null = null;
 
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: userMsg.text, image: frameBase64, sessionId,
+            message: userMsg.text,
+            image: frameBase64,
+            sessionId,
             history: messages.slice(-12).map(m => ({ role: m.role, text: m.text })),
+            generateImage: shouldVisualise,
           }),
         });
         if (!res.ok) throw new Error(`Backend ${res.status}`);
         const data = await res.json();
-        response = data.response;
-        grounded = data.grounded ?? false;
+        response      = data.response;
+        grounded      = data.grounded ?? false;
+        autoImage     = data.generatedImage || null;
+        autoImageMime = data.generatedImageMime || null;
+        autoCaption   = data.imageCaption || null;
       } catch {
-        // Fallback: direct Gemini API with googleSearch tool
+        // Client-side fallback with Google Search
         if (!apiKey) throw new Error('Backend unavailable and no API key provided.');
         const ai = new GoogleGenAI({ apiKey });
         const parts: any[] = [];
         if (frameBase64) parts.push({ inlineData: { data: frameBase64, mimeType: 'image/jpeg' } });
         parts.push({ text: userMsg.text });
-
-        // Build full history for context
-        const histContents = messages.slice(-12).map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }],
-        }));
+        const histContents = messages.slice(-12).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
         histContents.push({ role: 'user', parts });
-
         const result = await ai.models.generateContent({
           model: TEXT_MODEL,
           contents: histContents,
-          config: {
-            systemInstruction: TUTOR_SYSTEM_INSTRUCTION,
-            tools: [{ googleSearch: {} }],
-          },
+          config: { systemInstruction: TUTOR_SYSTEM_INSTRUCTION, tools: [{ googleSearch: {} }] },
         });
         response = result.text || 'No response received.';
         grounded = !!(result.candidates?.[0]?.groundingMetadata);
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', text: response, source: 'text', grounded }]);
+      // Add assistant message (with auto-generated image if available)
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
+        text: response,
+        source: 'text',
+        grounded,
+        generatedImage: autoImage || undefined,
+        generatedImageMime: autoImageMime || undefined,
+        imageCaption: autoCaption || undefined,
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+
+      // If backend did NOT return an image but topic warrants one, generate now
+      if (shouldVisualise && !autoImage) {
+        // The assistant msg is at index messages.length + 1 (after userMsg)
+        const newIdx = messagesRef.current.length; // will be set after setState
+        setTimeout(() => {
+          setMessages(prev => {
+            const idx = prev.length - 1;
+            if (prev[idx]?.role === 'assistant' && !prev[idx]?.generatedImage) {
+              generateVisual(userMsg.text, idx);
+            }
+            return prev;
+          });
+        }, 100);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to send message');
       setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, something went wrong: ${err.message}`, source: 'text' }]);
     } finally { setIsSending(false); }
-  }, [chatInput, captureFrame, messages, apiKey, sessionId, resetTextarea]);
+  }, [chatInput, captureFrame, messages, apiKey, sessionId, resetTextarea, generateVisual]);
 
-  // ── Live API: video frame sender ───────────────────────────────────────────
+  // ── Live API: video frames ─────────────────────────────────────────────────
   const startSendingFrames = useCallback((session: any) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -422,13 +518,11 @@ ${summary}
           || !videoRef.current || !ctx || !streamRef.current) return;
       canvas.width = 640; canvas.height = 480;
       ctx.drawImage(videoRef.current, 0, 0, 640, 480);
-      try {
-        session.sendRealtimeInput({ media: { data: canvas.toDataURL('image/jpeg', 0.6).split(',')[1], mimeType: 'image/jpeg' } });
-      } catch { /* closing */ }
+      try { session.sendRealtimeInput({ media: { data: canvas.toDataURL('image/jpeg', 0.6).split(',')[1], mimeType: 'image/jpeg' } }); } catch { }
     }, 2000);
   }, []);
 
-  // ── Live API: audio playback (sequential scheduler) ────────────────────────
+  // ── Live API: sequential audio playback ────────────────────────────────────
   const playAudio = useCallback((base64Audio: string) => {
     try {
       if (!playbackCtxRef.current || playbackCtxRef.current.state === 'closed') {
@@ -441,17 +535,14 @@ ${summary}
       const pcm16 = new Int16Array(bytes.buffer);
       const f32 = new Float32Array(pcm16.length);
       for (let i = 0; i < pcm16.length; i++) f32[i] = pcm16[i] / 32768;
-
       const buf = ctx.createBuffer(1, f32.length, 24000);
       buf.getChannelData(0).set(f32);
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(ctx.destination);
-
       const startAt = Math.max(ctx.currentTime, nextPlayTimeRef.current);
       src.start(startAt);
       nextPlayTimeRef.current = startAt + buf.duration;
-
       scheduledSourcesRef.current.push(src);
       src.onended = () => {
         scheduledSourcesRef.current = scheduledSourcesRef.current.filter(s => s !== src);
@@ -473,7 +564,7 @@ ${summary}
   // ── Save voice turn to Firestore ───────────────────────────────────────────
   const saveVoiceTurn = useCallback(async (userText: string, assistantText: string) => {
     if (!userText && !assistantText) return;
-    const msgs: { role: string; text: string }[] = [];
+    const msgs = [];
     if (userText) msgs.push({ role: 'user', text: userText });
     if (assistantText) msgs.push({ role: 'assistant', text: assistantText });
     try {
@@ -482,10 +573,10 @@ ${summary}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, messages: msgs }),
       });
-    } catch { /* non-critical */ }
+    } catch { }
   }, [sessionId]);
 
-  // ── Live API: start session ────────────────────────────────────────────────
+  // ── Live API: start ────────────────────────────────────────────────────────
   const startSession = async () => {
     isTearingDownRef.current = false;
     liveModelTranscriptRef.current = '';
@@ -496,7 +587,6 @@ ${summary}
     try {
       setStatusMessage('Requesting camera & microphone...');
       if (!isCameraOn) await startCamera();
-
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = audioStream;
 
@@ -513,8 +603,7 @@ ${summary}
                 this._buf[this._off++] = ch[i];
                 if (this._off >= 4096) {
                   const pcm = new Int16Array(4096);
-                  for (let j = 0; j < 4096; j++)
-                    pcm[j] = Math.max(-32768, Math.min(32767, Math.round(this._buf[j] * 32767)));
+                  for (let j = 0; j < 4096; j++) pcm[j] = Math.max(-32768, Math.min(32767, Math.round(this._buf[j] * 32767)));
                   this.port.postMessage(pcm.buffer, [pcm.buffer]);
                   this._buf = new Float32Array(4096); this._off = 0;
                 }
@@ -540,8 +629,6 @@ ${summary}
 
       setStatusMessage('Connecting to Gemini Live...');
       const genAI = new GoogleGenAI({ apiKey });
-
-      // Snapshot of current conversation for context injection
       const currentMessages = messagesRef.current;
 
       const session = await genAI.live.connect({
@@ -551,18 +638,15 @@ ${summary}
             isConnectedRef.current = true;
             setIsConnected(true);
             setIsConnecting(false);
-            setStatusMessage(currentMessages.length > 0
-              ? `Resuming — ${currentMessages.length} messages in context`
-              : 'Live — show me your homework!');
+            setStatusMessage(currentMessages.length > 0 ? `Resuming — ${currentMessages.length} messages in context` : 'Live — show me your homework!');
           },
 
           onmessage: (msg: LiveServerMessage) => {
-            // ── Server-side VAD interrupted the model ──
+            // Server VAD interrupted
             if (msg.serverContent?.interrupted) {
               flushAudioQueue();
               setModelSpeaking(false);
               setLiveTranscript('');
-              // Commit any partial model transcript before discarding
               if (liveModelTranscriptRef.current.trim()) {
                 const t = liveModelTranscriptRef.current.trim();
                 setMessages(prev => [...prev, { role: 'assistant', text: t, source: 'voice' }]);
@@ -574,20 +658,15 @@ ${summary}
               return;
             }
 
-            // ── User speech transcription ──
-            // Accumulate partial transcripts; final transcript comes with turnComplete
-            if ((msg.serverContent as any)?.inputTranscription?.text) {
+            // Speech transcription
+            if ((msg.serverContent as any)?.inputTranscription?.text)
               liveUserTranscriptRef.current += (msg.serverContent as any).inputTranscription.text;
-            }
-
-            // ── Model speech transcription ──
             if ((msg.serverContent as any)?.outputTranscription?.text) {
-              const chunk = (msg.serverContent as any).outputTranscription.text;
-              liveModelTranscriptRef.current += chunk;
+              liveModelTranscriptRef.current += (msg.serverContent as any).outputTranscription.text;
               setLiveTranscript(liveModelTranscriptRef.current);
             }
 
-            // ── Audio chunks ──
+            // Audio chunks
             if (msg.serverContent?.modelTurn?.parts) {
               for (const part of msg.serverContent.modelTurn.parts) {
                 if (part.inlineData?.mimeType?.startsWith('audio/') && part.inlineData.data) {
@@ -597,19 +676,29 @@ ${summary}
               }
             }
 
-            // ── Turn complete ──
+            // Turn complete — commit transcripts + auto-generate visual if relevant
             if (msg.serverContent?.turnComplete) {
               const userText  = liveUserTranscriptRef.current.trim();
               const modelText = liveModelTranscriptRef.current.trim();
 
-              // Add transcripts to the chat as messages (context persistence)
-              if (userText) {
-                setMessages(prev => [...prev, { role: 'user', text: userText, source: 'voice' }]);
+              const newMessages: ChatMessage[] = [];
+              if (userText)  newMessages.push({ role: 'user',      text: userText,  source: 'voice' });
+              if (modelText) newMessages.push({ role: 'assistant', text: modelText, source: 'voice' });
+
+              if (newMessages.length) {
+                setMessages(prev => {
+                  const updated = [...prev, ...newMessages];
+                  // Auto-generate visual illustration for the voice turn if topic warrants it
+                  const shouldViz = VISUAL_TOPIC_RE.test(userText) || VISUAL_TOPIC_RE.test(modelText);
+                  if (shouldViz) {
+                    const assistantIdx = updated.length - 1;
+                    // Defer so state has settled
+                    setTimeout(() => generateVisual(userText || modelText, assistantIdx), 300);
+                  }
+                  return updated;
+                });
+                saveVoiceTurn(userText, modelText);
               }
-              if (modelText) {
-                setMessages(prev => [...prev, { role: 'assistant', text: modelText, source: 'voice' }]);
-              }
-              if (userText || modelText) saveVoiceTurn(userText, modelText);
 
               liveUserTranscriptRef.current  = '';
               liveModelTranscriptRef.current = '';
@@ -652,24 +741,16 @@ ${summary}
             setIsConnecting(false);
             setModelSpeaking(false);
             setLiveTranscript('');
-            if (event?.code && event.code !== 1000)
-              console.warn(`Live closed: code=${event.code} reason=${event.reason ?? '(none)'}`);
+            if (event?.code && event.code !== 1000) console.warn(`Live closed: code=${event.code} reason=${event.reason ?? '(none)'}`);
             setStatusMessage('Session ended');
           },
         },
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
-          // Context persistence: inject conversation history into system instruction
           systemInstruction: buildSystemInstruction(currentMessages),
-          // Google Search grounding for up-to-date answers (Criterion 1 tool)
           tools: [{ googleSearch: {} }],
-          // Transcription: captures user speech and model speech as text
-          // so it can be persisted to Firestore and shown in the chat panel
-          ...(({
-            inputAudioTranscription: {},
-            outputAudioTranscription: {},
-          } as any)),
+          ...({ inputAudioTranscription: {}, outputAudioTranscription: {} } as any),
         },
       });
 
@@ -682,14 +763,8 @@ ${summary}
         const bytes = new Uint8Array(e.data as ArrayBuffer);
         let bin = '';
         for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-        try {
-          s.sendRealtimeInput({ media: { data: btoa(bin), mimeType: 'audio/pcm;rate=16000' } });
-        } catch {
-          isTearingDownRef.current = true;
-          isConnectedRef.current = false;
-          sessionRef.current = null;
-          workletNodeRef.current?.port.close();
-        }
+        try { s.sendRealtimeInput({ media: { data: btoa(bin), mimeType: 'audio/pcm;rate=16000' } }); }
+        catch { isTearingDownRef.current = true; isConnectedRef.current = false; sessionRef.current = null; workletNodeRef.current?.port.close(); }
       };
 
       startSendingFrames(session);
@@ -701,13 +776,12 @@ ${summary}
     }
   };
 
-  // ── Live API: stop session ─────────────────────────────────────────────────
+  // ── Live API: stop ─────────────────────────────────────────────────────────
   const stopSession = async () => {
     isTearingDownRef.current = true;
     isConnectedRef.current = false;
     const session = sessionRef.current;
     sessionRef.current = null;
-
     if (sendIntervalRef.current) { clearInterval(sendIntervalRef.current); sendIntervalRef.current = null; }
     workletNodeRef.current?.port.close();
     workletNodeRef.current?.disconnect();
@@ -722,7 +796,6 @@ ${summary}
     nextPlayTimeRef.current = 0;
     setModelSpeaking(false);
     setLiveTranscript('');
-
     await new Promise(r => setTimeout(r, 120));
     try { session?.close(); } catch { }
     setIsConnected(false);
@@ -735,22 +808,17 @@ ${summary}
   return (
     <div className="h-screen bg-[#f8f9fa] text-[#202124] flex flex-col overflow-hidden">
 
-      {/* ── Header ── */}
-      <header className="shrink-0 flex items-center justify-between px-4 md:px-6 py-2.5
-                         bg-white border-b border-[#e8eaed]">
+      {/* Header */}
+      <header className="shrink-0 flex items-center justify-between px-4 md:px-6 py-2.5 bg-white border-b border-[#e8eaed]">
         <button onClick={onBack} className="flex items-center gap-2.5 text-[#5f6368] hover:text-[#202124] transition-colors">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                          flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
             <Sparkles className="text-white" size={16} />
           </div>
           <span className="text-sm font-medium hidden sm:inline">Gemini Tutor</span>
         </button>
-
         <div className="flex items-center gap-2">
-          {/* Google Search badge when connected */}
           {isConnected && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1
-                             rounded-full text-xs font-medium bg-[#e6f4ea] text-[#137333] border border-[#ceead6]">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e6f4ea] text-[#137333] border border-[#ceead6]">
               <Globe size={11} /> Search On
             </span>
           )}
@@ -759,25 +827,18 @@ ${summary}
             : isConnecting ? 'bg-[#fef7e0] text-[#b06000] border border-[#fde58b]'
             : 'bg-[#f1f3f4] text-[#5f6368] border border-[#e8eaed]'
           }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              isConnected ? 'bg-[#34a853] animate-pulse'
-              : isConnecting ? 'bg-[#fbbc05] animate-pulse'
-              : 'bg-[#9aa0a6]'
-            }`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-[#34a853] animate-pulse' : isConnecting ? 'bg-[#fbbc05] animate-pulse' : 'bg-[#9aa0a6]'}`} />
             {isConnected ? 'Voice On' : isConnecting ? 'Connecting...' : 'Voice Off'}
           </span>
         </div>
       </header>
 
-      {/* ── Main two-panel layout ── */}
       <main className="flex-1 flex flex-col md:flex-row gap-3 p-3 md:p-4 overflow-hidden max-w-7xl mx-auto w-full">
 
         {/* ── Left: Video + Controls ── */}
         <div className="flex flex-col gap-3 md:w-[44%] shrink-0">
-          {/* Video */}
           <div className="relative bg-[#1c1c1e] rounded-2xl overflow-hidden aspect-video shadow-sm">
-            <video ref={videoRef} autoPlay playsInline muted
-              className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} />
+            <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} />
             {!isCameraOn && (
               <div className="w-full h-full flex flex-col items-center justify-center text-[#9aa0a6] gap-2">
                 <Camera size={40} strokeWidth={1.5} />
@@ -785,106 +846,74 @@ ${summary}
               </div>
             )}
             {isConnected && (
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1
-                              bg-black/55 backdrop-blur-sm rounded-full">
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-black/55 backdrop-blur-sm rounded-full">
                 <span className="w-2 h-2 rounded-full bg-[#ea4335] animate-pulse" />
                 <span className="text-white text-[10px] font-bold tracking-widest">LIVE</span>
               </div>
             )}
             {isModelSpeaking && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5
-                              px-3 py-1.5 bg-black/65 backdrop-blur-sm rounded-full">
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-black/65 backdrop-blur-sm rounded-full">
                 {[0, 140, 280].map(d => (
-                  <span key={d} className="w-1.5 rounded-full bg-[#4285f4] animate-bounce"
-                    style={{ height: '16px', animationDelay: `${d}ms` }} />
+                  <span key={d} className="w-1.5 rounded-full bg-[#4285f4] animate-bounce" style={{ height: '16px', animationDelay: `${d}ms` }} />
                 ))}
                 <span className="text-white text-[10px] ml-1.5 font-medium tracking-wide">Speaking</span>
               </div>
             )}
           </div>
 
-          {/* Status */}
           <p className="text-[11px] text-[#9aa0a6] text-center">{statusMessage}</p>
 
           {error && (
-            <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl
-                            text-[#c5221f] text-xs text-center">
+            <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl text-[#c5221f] text-xs text-center">
               {error}
             </div>
           )}
 
-          {/* Controls row */}
           <div className="flex items-center gap-2.5 justify-center flex-wrap">
-            {/* Camera */}
             <button onClick={isCameraOn ? stopCamera : startCamera}
               className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                isCameraOn
-                  ? 'bg-white text-[#5f6368] border border-[#dadce0] hover:bg-[#f8f9fa]'
-                  : 'bg-[#f1f3f4] text-[#9aa0a6] hover:bg-[#e8eaed]'
+                isCameraOn ? 'bg-white text-[#5f6368] border border-[#dadce0] hover:bg-[#f8f9fa]' : 'bg-[#f1f3f4] text-[#9aa0a6] hover:bg-[#e8eaed]'
               }`}
               title={isCameraOn ? 'Turn off camera' : 'Turn on camera'}>
               {isCameraOn ? <Camera size={19} /> : <CameraOff size={19} />}
             </button>
 
-            {/* Interrupt */}
             {isConnected && isModelSpeaking && (
               <button onClick={interruptAgent}
-                className="px-4 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
-                           bg-[#f9ab00] hover:bg-[#e8a000] text-white shadow-sm transition-all animate-pulse">
+                className="px-4 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm bg-[#f9ab00] hover:bg-[#e8a000] text-white shadow-sm transition-all animate-pulse">
                 <StopCircle size={17} /> Interrupt
               </button>
             )}
 
-            {/* Start / Stop Voice */}
-            <button onClick={isConnected ? stopSession : startSession}
-              disabled={isConnecting}
-              className={`px-5 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
-                          transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed ${
-                isConnected
-                  ? 'bg-[#ea4335] text-white hover:bg-[#d93025]'
-                  : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
+            <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
+              className={`px-5 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed ${
+                isConnected ? 'bg-[#ea4335] text-white hover:bg-[#d93025]' : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
               }`}>
-              {isConnected ? (
-                <><MicOff size={17} /> Stop Voice</>
-              ) : isConnecting ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Connecting...
-                </>
-              ) : (
-                <><Mic size={17} /> Start Voice</>
-              )}
+              {isConnected ? (<><MicOff size={17} /> Stop Voice</>)
+                : isConnecting ? (<><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Connecting...</>)
+                : (<><Mic size={17} /> Start Voice</>)}
             </button>
           </div>
         </div>
 
         {/* ── Right: Chat panel ── */}
-        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-[#e8eaed]
-                        overflow-hidden min-h-[300px] md:min-h-0">
+        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-[#e8eaed] overflow-hidden min-h-[300px] md:min-h-0">
 
           {/* Chat header */}
           <div className="shrink-0 px-5 py-3 border-b border-[#f1f3f4] flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                            flex items-center justify-center">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
               <Sparkles size={13} className="text-white" />
             </div>
             <span className="text-sm font-medium text-[#202124]">Gemini Tutor</span>
             <div className="ml-auto flex items-center gap-2">
               {isCameraOn && (
                 <button onClick={() => sendChatMessage(true)} disabled={isSending}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
-                             text-[#1a73e8] bg-[#e8f0fe] hover:bg-[#d2e3fc] rounded-full
-                             transition-colors disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#1a73e8] bg-[#e8f0fe] hover:bg-[#d2e3fc] rounded-full transition-colors disabled:opacity-50">
                   <Camera size={11} /> Capture & Ask
                 </button>
               )}
               {messages.length > 0 && (
-                <span className="text-[10px] text-[#9aa0a6] bg-[#f1f3f4] px-2 py-0.5 rounded-full">
-                  {messages.length} msgs
-                </span>
+                <span className="text-[10px] text-[#9aa0a6] bg-[#f1f3f4] px-2 py-0.5 rounded-full">{messages.length} msgs</span>
               )}
             </div>
           </div>
@@ -893,27 +922,22 @@ ${summary}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             {messages.length === 0 && !liveTranscript && (
               <div className="h-full flex flex-col items-center justify-center gap-4 py-12">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                                flex items-center justify-center">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
                   <Sparkles size={24} className="text-white" />
                 </div>
                 <div className="text-center">
                   <p className="text-base font-medium text-[#202124] mb-1">How can I help you today?</p>
-                  <p className="text-xs text-[#9aa0a6] max-w-[240px]">
-                    Ask a question, start a voice session, or capture a photo of your homework.
-                  </p>
+                  <p className="text-xs text-[#9aa0a6] max-w-[240px]">Ask a question, start a voice session, or capture a photo of your homework. Visual topics get an AI illustration automatically.</p>
                 </div>
-                {/* Suggestions */}
                 <div className="flex flex-col gap-2 mt-2 w-full max-w-xs">
                   {[
                     'Explain how photosynthesis works',
-                    'Help me solve a quadratic equation',
-                    'What is the French Revolution?',
+                    'Describe the Krebs cycle',
+                    'How does DNA replication work?',
                   ].map(s => (
                     <button key={s} onClick={() => { setChatInput(s); textareaRef.current?.focus(); }}
-                      className="text-left px-4 py-2.5 rounded-xl border border-[#e8eaed] text-xs
-                                 text-[#5f6368] hover:bg-[#f8f9fa] hover:border-[#dadce0] transition-colors">
-                      {s}
+                      className="text-left px-4 py-2.5 rounded-xl border border-[#e8eaed] text-xs text-[#5f6368] hover:bg-[#f8f9fa] hover:border-[#dadce0] transition-colors flex items-center gap-2">
+                      <Palette size={11} className="text-[#9b72cb] shrink-0" /> {s}
                     </button>
                   ))}
                 </div>
@@ -923,22 +947,35 @@ ${summary}
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                                  flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center shrink-0 mt-0.5">
                     <Sparkles size={12} className="text-white" />
                   </div>
                 )}
-                <div className={`max-w-[82%] ${msg.role === 'user' ? '' : ''}`}>
+                <div className="max-w-[82%]">
                   <div className={`px-4 py-3 text-sm ${
                     msg.role === 'user'
                       ? 'bg-[#e8f0fe] text-[#1a1a1a] rounded-2xl rounded-tr-sm'
                       : 'bg-[#f8f9fa] text-[#3c4043] rounded-2xl rounded-tl-sm border border-[#e8eaed]'
                   }`}>
-                    {msg.image && (
-                      <img src={msg.image} alt="Captured" className="rounded-lg mb-2.5 max-h-36 w-auto" />
-                    )}
+                    {msg.image && <img src={msg.image} alt="Captured" className="rounded-lg mb-2.5 max-h-36 w-auto" />}
                     <MarkdownContent text={msg.text} isUser={msg.role === 'user'} />
+
+                    {/* ── AI-generated illustration ── */}
+                    {msg.role === 'assistant' && msg.isGeneratingImage && <ImageGeneratingSkeleton />}
+                    {msg.role === 'assistant' && msg.generatedImage && !msg.isGeneratingImage && (
+                      <GeneratedImageCard
+                        imageBase64={msg.generatedImage}
+                        mimeType={msg.generatedImageMime || 'image/png'}
+                        caption={msg.imageCaption}
+                        onRegenerate={() => generateVisual(
+                          messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text,
+                          i
+                        )}
+                        isRegenerating={false}
+                      />
+                    )}
                   </div>
+
                   {/* Metadata row */}
                   <div className={`flex items-center gap-2 mt-1 px-1 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {msg.source === 'voice' && (
@@ -951,16 +988,25 @@ ${summary}
                         <Globe size={9} /> Search
                       </span>
                     )}
+                    {/* Manual "Visualize" button on assistant messages without an image */}
+                    {msg.role === 'assistant' && !msg.generatedImage && !msg.isGeneratingImage && (
+                      <button
+                        onClick={() => {
+                          const userQ = messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text;
+                          generateVisual(userQ, i);
+                        }}
+                        className="text-[10px] text-[#9b72cb] flex items-center gap-1 hover:bg-[#f3e8ff] px-1.5 py-0.5 rounded-full transition-colors">
+                        <Palette size={9} /> Visualize
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
 
-            {/* Live voice transcript (while model is speaking) */}
             {liveTranscript && (
               <div className="flex gap-2.5 flex-row">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                                flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center shrink-0 mt-0.5">
                   <Sparkles size={12} className="text-white" />
                 </div>
                 <div className="max-w-[82%] px-4 py-3 bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-sm text-sm text-[#5f6368] italic">
@@ -970,19 +1016,14 @@ ${summary}
               </div>
             )}
 
-            {/* Text typing indicator */}
             {isSending && !liveTranscript && (
               <div className="flex gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                                flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center shrink-0">
                   <Sparkles size={12} className="text-white" />
                 </div>
                 <div className="bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-sm px-4 py-3.5">
                   <div className="flex gap-1.5 items-center">
-                    {[0, 160, 320].map(d => (
-                      <span key={d} className="w-2 h-2 bg-[#bdc1c6] rounded-full animate-bounce"
-                        style={{ animationDelay: `${d}ms` }} />
-                    ))}
+                    {[0, 160, 320].map(d => <span key={d} className="w-2 h-2 bg-[#bdc1c6] rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
                   </div>
                 </div>
               </div>
@@ -992,37 +1033,19 @@ ${summary}
 
           {/* ── Google-style input ── */}
           <div className="shrink-0 px-4 pb-4 pt-2">
-            <div className="relative rounded-[24px] bg-[#f1f3f4] border border-transparent
-                            focus-within:bg-white focus-within:border-[#e0e0e0]
-                            focus-within:shadow-[0_2px_10px_rgba(0,0,0,0.12)] transition-all">
-
-              {/* Textarea (auto-grows) */}
-              <textarea
-                ref={textareaRef}
-                value={chatInput}
+            <div className="relative rounded-[24px] bg-[#f1f3f4] border border-transparent focus-within:bg-white focus-within:border-[#e0e0e0] focus-within:shadow-[0_2px_10px_rgba(0,0,0,0.12)] transition-all">
+              <textarea ref={textareaRef} value={chatInput}
                 onChange={handleInputChange}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendChatMessage(false);
-                  }
-                }}
-                placeholder="Ask Gemini Tutor..."
-                rows={1}
-                disabled={isSending}
-                className="w-full px-5 pt-4 pb-12 text-sm text-[#202124] bg-transparent resize-none
-                           outline-none placeholder:text-[#9aa0a6] leading-relaxed max-h-[180px]
-                           disabled:opacity-60"
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(false); } }}
+                placeholder="Ask Gemini Tutor... (visual topics get an AI illustration)"
+                rows={1} disabled={isSending}
+                className="w-full px-5 pt-4 pb-12 text-sm text-[#202124] bg-transparent resize-none outline-none placeholder:text-[#9aa0a6] leading-relaxed max-h-[180px] disabled:opacity-60"
               />
-
-              {/* Bottom toolbar */}
               <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   {isCameraOn && (
                     <button onClick={() => sendChatMessage(true)} disabled={isSending}
-                      className="w-8 h-8 rounded-full hover:bg-[#e8eaed] flex items-center justify-center
-                                 transition-colors text-[#5f6368]"
-                      title="Capture & Ask">
+                      className="w-8 h-8 rounded-full hover:bg-[#e8eaed] flex items-center justify-center transition-colors text-[#5f6368]" title="Capture & Ask">
                       <Camera size={16} />
                     </button>
                   )}
@@ -1030,21 +1053,14 @@ ${summary}
                     <CornerDownLeft size={9} className="inline mr-0.5" />Enter to send · Shift+Enter for newline
                   </span>
                 </div>
-
-                <button
-                  onClick={() => sendChatMessage(false)}
-                  disabled={isSending || !chatInput.trim()}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all
-                             bg-[#1a73e8] hover:bg-[#1765cc] text-white shadow-sm
-                             disabled:bg-[#e8eaed] disabled:text-[#bdc1c6] disabled:shadow-none
-                             disabled:cursor-not-allowed">
+                <button onClick={() => sendChatMessage(false)} disabled={isSending || !chatInput.trim()}
+                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all bg-[#1a73e8] hover:bg-[#1765cc] text-white shadow-sm disabled:bg-[#e8eaed] disabled:text-[#bdc1c6] disabled:shadow-none disabled:cursor-not-allowed">
                   <Send size={15} />
                 </button>
               </div>
             </div>
-
             <p className="text-center text-[10px] text-[#bdc1c6] mt-2">
-              Gemini Tutor uses Google Search to provide up-to-date answers. Verify important information.
+              Gemini Tutor · Live Voice · AI Illustrations · Google Search · Google Cloud
             </p>
           </div>
         </div>
@@ -1054,6 +1070,7 @@ ${summary}
 }
 
 // ─── App Root ─────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [screen, setScreen] = useState<'welcome' | 'tutor'>('welcome');
   const [apiKey, setApiKey] = useState('');

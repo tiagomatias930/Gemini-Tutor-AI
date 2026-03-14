@@ -22,7 +22,7 @@ Keep responses concise but helpful. Use markdown (bold, lists, code blocks) wher
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
 const TEXT_MODEL  = 'gemini-2.5-flash';
-const IMAGE_MODEL = 'gemini-2.5-flash-preview-image-generation';
+const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const LIVE_MODEL  = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 // Topics where generating a visual diagram is highly beneficial

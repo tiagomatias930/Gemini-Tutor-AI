@@ -7,6 +7,12 @@ An AI-powered homework assistant — point your camera, use your voice, or type 
 
 ---
 
+## Architecture
+
+![Gemini Tutor AI — System Architecture](public/diagram.png)
+
+---
+
 
 ## English
 

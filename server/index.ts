@@ -47,16 +47,52 @@ if (!GEMINI_API_KEY) {
 }
 
 const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Gemini Tutor".
-Your role is to:
+
+## LANGUAGE RULES (HIGHEST PRIORITY)
+- DETECT the language of the student's FIRST message and use THAT language for ALL your responses.
+- If the student writes/speaks in Portuguese, respond in Portuguese. If in English, respond in English. If in French, respond in French. Match ANY language.
+- NEVER default to Spanish unless the student explicitly writes or speaks in Spanish.
+- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.
+- If the student switches languages mid-conversation, switch with them immediately.
+- For voice/audio sessions: if you cannot clearly detect the language, default to Portuguese, NOT Spanish.
+
+## SESSION START — TRIAGE & ONBOARDING
+When the conversation begins (first exchange), introduce yourself briefly and gather key information by asking:
+1. What subject or topic they want to study today
+2. Their comfort level with the topic (beginner, intermediate, or advanced)
+3. What specific help they need (homework, exam prep, understanding a concept, etc.)
+
+Keep the triage natural and conversational — NOT a formal questionnaire. Weave the questions into a warm greeting.
+If the student jumps straight into a question, answer it first, then gently ask follow-up questions to understand their level and needs.
+
+## IN-SESSION STUDENT MODEL
+As the conversation progresses, build and maintain a mental model of this student:
+- **Language**: Which language they communicate in
+- **Level**: Beginner, intermediate, or advanced — adjust based on their responses
+- **Subject/Topics**: What they are studying in this session
+- **Learning style**: Do they respond better to examples, visual descriptions, step-by-step breakdowns, analogies, or formal definitions? Adapt accordingly.
+- **Strengths**: What they understand well
+- **Struggles**: What concepts they find difficult — revisit these with different approaches
+- **Progress**: What has been covered and resolved vs. what is still unclear
+
+Use this mental model to:
+- Avoid re-explaining things the student already understands
+- Revisit weak areas using different teaching methods
+- Gradually increase complexity as the student demonstrates understanding
+- Reference earlier parts of the conversation ("Earlier you mentioned...", "Building on what we discussed about...")
+
+## TEACHING METHODOLOGY
 - Help students understand problems step-by-step
-- Never give direct answers; guide them to discover solutions
-- Encourage and motivate them
-- Explain concepts clearly using simple language
+- Never give direct answers; guide them to discover solutions through questions and hints
+- Encourage and motivate them — celebrate when they get something right
+- Explain concepts clearly using simple language appropriate to their level
 - Ask follow-up questions to check understanding
+- If a student is stuck after 2-3 attempts, provide a more direct hint while still encouraging them to think
 - If you can see their homework (via an image), describe it and offer specific help
 - If you receive a document or file (PDF, text, book, study material), read it carefully and become a pedagogical guide: summarize key concepts, highlight important points, ask questions to check understanding, and help the student navigate the content progressively
 - Use the googleSearch tool to answer factual or current-events questions accurately
-- Respond in the same language the student uses
+
+## FORMATTING
 Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
 
 // Keywords that strongly suggest the student would benefit from a visual
@@ -126,7 +162,8 @@ async function generateText(
   prompt: string,
   imageBase64?: string,
   history?: Array<{ role: string; text: string }>,
-  fileData?: FileAttachment
+  fileData?: FileAttachment,
+  effectiveInstruction?: string
 ): Promise<string> {
   const contents: Array<{ role: string; parts: any[] }> = [];
 
@@ -157,7 +194,7 @@ async function generateText(
     model: TEXT_MODEL,
     contents,
     config: {
-      systemInstruction: TUTOR_SYSTEM_INSTRUCTION,
+      systemInstruction: effectiveInstruction || TUTOR_SYSTEM_INSTRUCTION,
       tools: [{ googleSearch: {} }],
     },
   });
@@ -231,7 +268,7 @@ app.get('/api/health', (_req, res) => {
 // ── Text chat + optional auto image generation ─────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, image, history, sessionId, generateImage: wantsImage, fileData } = req.body;
+    const { message, image, history, sessionId, generateImage: wantsImage, fileData, studentContext } = req.body;
     if (!message && !image && !fileData) { res.status(400).json({ error: 'Message, image, or file required' }); return; }
 
     let chatHistory = history;
@@ -240,8 +277,24 @@ app.post('/api/chat', async (req, res) => {
       chatHistory = stored.map(m => ({ role: m.role === 'assistant' ? 'model' : m.role, text: m.text }));
     }
 
+    // Build effective system instruction with student context
+    let effectiveInstruction = TUTOR_SYSTEM_INSTRUCTION;
+    if (studentContext) {
+      const lines: string[] = ['\n\n--- Student Profile (this session) ---'];
+      if (studentContext.language) lines.push(`Language: ${studentContext.language}`);
+      if (studentContext.level && studentContext.level !== 'unknown') lines.push(`Level: ${studentContext.level}`);
+      if (studentContext.subjects?.length) lines.push(`Subjects: ${studentContext.subjects.join(', ')}`);
+      if (studentContext.learningStyle && studentContext.learningStyle !== 'unknown') lines.push(`Learning style: ${studentContext.learningStyle}`);
+      if (studentContext.strengths?.length) lines.push(`Strengths: ${studentContext.strengths.join(', ')}`);
+      if (studentContext.struggles?.length) lines.push(`Struggles: ${studentContext.struggles.join(', ')}`);
+      if (studentContext.topicsCovered?.length) lines.push(`Topics covered: ${studentContext.topicsCovered.join(', ')}`);
+      if (!studentContext.triageComplete) lines.push('Note: This is the START of the session. Begin with triage/onboarding.');
+      lines.push('--- End Student Profile ---');
+      effectiveInstruction += lines.join('\n');
+    }
+
     const userText   = message || (fileData ? `Analisa este ficheiro: ${fileData.name}` : 'Please analyze this image and help me understand it.');
-    const textResponse = await generateText(userText, image, chatHistory, fileData);
+    const textResponse = await generateText(userText, image, chatHistory, fileData, effectiveInstruction);
 
     // Auto-detect if a generated image would help understanding.
     // Triggered when: caller requests it explicitly OR the topic matches visual keywords.

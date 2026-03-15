@@ -9,16 +9,52 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Gemini Tutor".
-Your role is to:
+
+## LANGUAGE RULES (HIGHEST PRIORITY)
+- DETECT the language of the student's FIRST message and use THAT language for ALL your responses.
+- If the student writes/speaks in Portuguese, respond in Portuguese. If in English, respond in English. If in French, respond in French. Match ANY language.
+- NEVER default to Spanish unless the student explicitly writes or speaks in Spanish.
+- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.
+- If the student switches languages mid-conversation, switch with them immediately.
+- For voice/audio sessions: if you cannot clearly detect the language, default to Portuguese, NOT Spanish.
+
+## SESSION START — TRIAGE & ONBOARDING
+When the conversation begins (first exchange), introduce yourself briefly and gather key information by asking:
+1. What subject or topic they want to study today
+2. Their comfort level with the topic (beginner, intermediate, or advanced)
+3. What specific help they need (homework, exam prep, understanding a concept, etc.)
+
+Keep the triage natural and conversational — NOT a formal questionnaire. Weave the questions into a warm greeting.
+If the student jumps straight into a question, answer it first, then gently ask follow-up questions to understand their level and needs.
+
+## IN-SESSION STUDENT MODEL
+As the conversation progresses, build and maintain a mental model of this student:
+- **Language**: Which language they communicate in
+- **Level**: Beginner, intermediate, or advanced — adjust based on their responses
+- **Subject/Topics**: What they are studying in this session
+- **Learning style**: Do they respond better to examples, visual descriptions, step-by-step breakdowns, analogies, or formal definitions? Adapt accordingly.
+- **Strengths**: What they understand well
+- **Struggles**: What concepts they find difficult — revisit these with different approaches
+- **Progress**: What has been covered and resolved vs. what is still unclear
+
+Use this mental model to:
+- Avoid re-explaining things the student already understands
+- Revisit weak areas using different teaching methods
+- Gradually increase complexity as the student demonstrates understanding
+- Reference earlier parts of the conversation ("Earlier you mentioned...", "Building on what we discussed about...")
+
+## TEACHING METHODOLOGY
 - Help students understand problems step-by-step
-- Never give direct answers; guide them to discover solutions
-- Encourage and motivate them
-- Explain concepts clearly using simple language
+- Never give direct answers; guide them to discover solutions through questions and hints
+- Encourage and motivate them — celebrate when they get something right
+- Explain concepts clearly using simple language appropriate to their level
 - Ask follow-up questions to check understanding
+- If a student is stuck after 2-3 attempts, provide a more direct hint while still encouraging them to think
 - If you can see their homework (via an image), describe it and offer specific help
 - If you receive a document or file (PDF, text, book, study material), read it carefully and become a pedagogical guide: summarize key concepts, highlight important points, ask questions to check understanding, and help the student navigate the content progressively
 - Use the googleSearch tool to answer factual or current-events questions accurately
-- Respond in the same language the student uses
+
+## FORMATTING
 Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
@@ -28,6 +64,38 @@ const LIVE_MODEL  = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 // Topics where generating a visual diagram is highly beneficial
 const VISUAL_TOPIC_RE = /\b(explain|how does|how do|what is|describe|show|draw|diagram|illustrate|visualize|cycle|process|system|structure|anatomy|cell|molecule|atom|circuit|photosynthesis|mitosis|meiosis|krebs|dna|protein|evolution|ecosystem|solar system|water cycle|carbon cycle|nitrogen cycle|food chain|neural network|algorithm|data structure|sorting|equation|geometry|triangle|function|derivative|integral|wave|gravity|quantum|thermodynamics|osmosis|diffusion|respiration|digestion|heart|brain|lung|skeleton|muscle|revolution|empire|civilization|volcano|earthquake|plate tectonic|weather|ocean|atmosphere|electromagnetic)\b/i;
+
+interface StudentContext {
+  language: string;
+  level: string;
+  subjects: string[];
+  learningStyle: string;
+  strengths: string[];
+  struggles: string[];
+  topicsCovered: string[];
+  triageComplete: boolean;
+  messageCount: number;
+}
+
+const EMPTY_STUDENT_CONTEXT: StudentContext = {
+  language: '', level: 'unknown', subjects: [], learningStyle: 'unknown',
+  strengths: [], struggles: [], topicsCovered: [],
+  triageComplete: false, messageCount: 0,
+};
+
+function detectLanguage(text: string): string {
+  const lower = text.toLowerCase();
+  // Portuguese-only indicators
+  if (/\b(obrigad[oa]|também|então|não|está|você|ainda|trabalho|escola|universidade|faculdade|dúvida|compreend|ficheiro|preciso de)\b/.test(lower)) return 'pt';
+  // Spanish-only indicators (words that don't exist in Portuguese)
+  if (/\b(necesito|ayuda|gracias|entiendo|también|nosotros|vosotros|ustedes|trabajo|escuela|universidad)\b/.test(lower)) return 'es';
+  // French indicators
+  if (/\b(bonjour|merci|comment|pourquoi|besoin|comprend|expliquer?|question|je suis|s'il vous|c'est)\b/.test(lower)) return 'fr';
+  // Shared pt/es words → default to Portuguese
+  if (/\b(como|porque|por favor|explicar?|estudar?|ajuda|problema|matemática)\b/.test(lower)) return 'pt';
+  if (text.trim().length > 0) return 'en';
+  return '';
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -578,6 +646,16 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [liveTranscript, setLiveTranscript]   = useState('');
   const [uploadedFile, setUploadedFile]       = useState<FileAttachment | null>(null);
 
+  // ── Student context (in-session memory) ─────────────────────────────────
+  const [studentContext, setStudentContext] = useState<StudentContext>(() => {
+    const stored = sessionStorage.getItem('tutor_student_context');
+    if (stored) { try { return JSON.parse(stored); } catch {} }
+    return { ...EMPTY_STUDENT_CONTEXT };
+  });
+  useEffect(() => {
+    sessionStorage.setItem('tutor_student_context', JSON.stringify(studentContext));
+  }, [studentContext]);
+
   // Criterion 3: Cloud Firestore session via backend
   const [sessionId] = useState(() => {
     const s = sessionStorage.getItem('tutor_session_id');
@@ -631,10 +709,32 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     nextPlayTimeRef.current = 0;
   }, []);
 
-  const buildSystemInstruction = useCallback((msgs: ChatMessage[]) => {
-    if (!msgs.length) return TUTOR_SYSTEM_INSTRUCTION;
-    const summary = msgs.slice(-12).map(m => `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.text.slice(0, 200)}`).join('\n');
-    return `${TUTOR_SYSTEM_INSTRUCTION}\n\n--- Conversation history (remember, do NOT repeat) ---\n${summary}\n--- End ---`;
+  const buildSystemInstruction = useCallback((msgs: ChatMessage[], ctx?: StudentContext) => {
+    let instruction = TUTOR_SYSTEM_INSTRUCTION;
+
+    // Append student profile if we have any context
+    if (ctx && (ctx.language || ctx.level !== 'unknown' || ctx.subjects.length > 0)) {
+      const lines: string[] = ['\n\n--- Student Profile (this session) ---'];
+      if (ctx.language) lines.push(`Language: ${ctx.language}`);
+      if (ctx.level !== 'unknown') lines.push(`Level: ${ctx.level}`);
+      if (ctx.subjects.length) lines.push(`Subjects: ${ctx.subjects.join(', ')}`);
+      if (ctx.learningStyle !== 'unknown') lines.push(`Learning style: ${ctx.learningStyle}`);
+      if (ctx.strengths.length) lines.push(`Strengths: ${ctx.strengths.join(', ')}`);
+      if (ctx.struggles.length) lines.push(`Struggles: ${ctx.struggles.join(', ')}`);
+      if (ctx.topicsCovered.length) lines.push(`Topics covered: ${ctx.topicsCovered.join(', ')}`);
+      lines.push('--- End Student Profile ---');
+      instruction += lines.join('\n');
+    } else if (ctx && !ctx.triageComplete) {
+      instruction += '\n\nNote: This is the START of the session. Begin with the triage/onboarding as described above.';
+    }
+
+    // Append conversation history (for Live API which needs it in system instruction)
+    if (msgs.length) {
+      const summary = msgs.slice(-12).map(m => `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.text.slice(0, 200)}`).join('\n');
+      instruction += `\n\n--- Conversation history (remember, do NOT repeat) ---\n${summary}\n--- End ---`;
+    }
+
+    return instruction;
   }, []);
 
   // ── Image generation ───────────────────────────────────────────────────────
@@ -809,6 +909,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             sessionId,
             history: messages.slice(-12).map(m => ({ role: m.role, text: m.text })),
             generateImage: shouldVisualise,
+            studentContext,
           }),
         });
         if (!res.ok) throw new Error(`Backend ${res.status}`);
@@ -837,7 +938,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         const result = await ai.models.generateContent({
           model: TEXT_MODEL,
           contents: histContents,
-          config: { systemInstruction: TUTOR_SYSTEM_INSTRUCTION, tools: [{ googleSearch: {} }] },
+          config: { systemInstruction: buildSystemInstruction(messages, studentContext), tools: [{ googleSearch: {} }] },
         });
         response = result.text || 'No response received.';
         grounded = !!(result.candidates?.[0]?.groundingMetadata);
@@ -854,6 +955,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         imageCaption: autoCaption || undefined,
       };
       setMessages(prev => [...prev, assistantMsg]);
+
+      // Update student context with info from this exchange
+      setStudentContext(prev => ({
+        ...prev,
+        language: prev.language || detectLanguage(userMsg.text),
+        messageCount: prev.messageCount + 1,
+        triageComplete: prev.triageComplete || prev.messageCount >= 1,
+      }));
 
       // If backend did NOT return an image but topic warrants one, generate now
       if (shouldVisualise && !autoImage) {
@@ -1064,6 +1173,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   return updated;
                 });
                 saveVoiceTurn(userText, modelText);
+
+                // Update student context from voice exchange
+                setStudentContext(prev => ({
+                  ...prev,
+                  language: prev.language || detectLanguage(userText),
+                  messageCount: prev.messageCount + 1,
+                  triageComplete: prev.triageComplete || prev.messageCount >= 1,
+                }));
               }
 
               liveUserTranscriptRef.current  = '';
@@ -1114,7 +1231,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
-          systemInstruction: buildSystemInstruction(currentMessages),
+          systemInstruction: buildSystemInstruction(currentMessages, studentContext),
           tools: [{ googleSearch: {} }],
           ...({ inputAudioTranscription: {}, outputAudioTranscription: {} } as any),
         },

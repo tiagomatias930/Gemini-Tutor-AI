@@ -3,7 +3,7 @@ import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import {
   Mic, MicOff, Sparkles, Camera, CameraOff,
   BookOpen, ArrowRight, Volume2, MessageSquare,
-  StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn,
+  StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn, Paperclip, FileText,
 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -16,13 +16,14 @@ Your role is to:
 - Explain concepts clearly using simple language
 - Ask follow-up questions to check understanding
 - If you can see their homework (via an image), describe it and offer specific help
+- If you receive a document or file (PDF, text, book, study material), read it carefully and become a pedagogical guide: summarize key concepts, highlight important points, ask questions to check understanding, and help the student navigate the content progressively
 - Use the googleSearch tool to answer factual or current-events questions accurately
 - Respond in the same language the student uses
 Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
 const TEXT_MODEL  = 'gemini-2.5-flash';
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
+const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
 const LIVE_MODEL  = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 // Topics where generating a visual diagram is highly beneficial
@@ -39,6 +40,14 @@ interface ChatMessage {
   generatedImageMime?: string;
   imageCaption?: string;
   isGeneratingImage?: boolean;
+  attachedFile?: { name: string; mimeType: string }; // metadata for display only
+}
+
+interface FileAttachment {
+  name: string;
+  mimeType: string;
+  data: string;    // base64 for binary files, plain text for text files
+  isText: boolean;
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -264,6 +273,295 @@ function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
   );
 }
 
+// ─── Mobile camera PiP preview (uses MediaStream directly, separate from desktop ref) ──
+
+function MobileCamPreview({ stream }: { stream: MediaStream | null }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (ref.current && stream) {
+      ref.current.srcObject = stream;
+    }
+  }, [stream]);
+  return <video ref={ref} autoPlay playsInline muted className="w-full h-full object-cover" />;
+}
+
+// ─── Shared chat message list (used by both desktop and mobile) ───────────────
+
+function ChatMessages({
+  messages, liveTranscript, isSending, chatEndRef, onSuggestion, onVisualize,
+  extraTopPad = false,
+}: {
+  messages: ChatMessage[];
+  liveTranscript: string;
+  isSending: boolean;
+  chatEndRef: React.RefObject<HTMLDivElement>;
+  onSuggestion: (s: string) => void;
+  onVisualize: (q: string, i: number) => void;
+  extraTopPad?: boolean;
+}) {
+  return (
+    <div className={`px-3 sm:px-4 py-4 space-y-4 ${extraTopPad ? 'pt-[140px]' : ''}`}>
+      {messages.length === 0 && !liveTranscript && (
+        <div className="flex flex-col items-center justify-center gap-3 pt-16 pb-8 px-4">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
+            <Sparkles size={20} className="text-white" />
+          </div>
+          <div className="text-center">
+            <p className="text-base font-medium text-[#202124] mb-1">How can I help you today?</p>
+            <p className="text-xs text-[#9aa0a6] max-w-[260px]">Ask anything — visual topics get an AI illustration automatically.</p>
+          </div>
+          <div className="flex flex-col gap-2 w-full max-w-[280px] mt-1">
+            {[
+              'Explain how photosynthesis works',
+              'Describe the Krebs cycle',
+              'How does DNA replication work?',
+            ].map(s => (
+              <button key={s} onClick={() => onSuggestion(s)}
+                className="text-left px-4 py-3 rounded-2xl border border-[#e8eaed] text-xs
+                           text-[#5f6368] hover:bg-[#f8f9fa] active:bg-[#f1f3f4]
+                           transition-colors flex items-center gap-2 min-h-[44px]">
+                <Palette size={11} className="text-[#9b72cb] shrink-0" /> {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {messages.map((msg, i) => (
+        <div key={i} className={`flex gap-2 sm:gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+          {msg.role === 'assistant' && (
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                            flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles size={12} className="text-white" />
+            </div>
+          )}
+          <div className="max-w-[88%] sm:max-w-[82%]">
+            <div className={`px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm leading-relaxed ${
+              msg.role === 'user'
+                ? 'bg-[#e8f0fe] text-[#1a1a1a] rounded-2xl rounded-tr-sm'
+                : 'bg-[#f8f9fa] text-[#3c4043] rounded-2xl rounded-tl-sm border border-[#e8eaed]'
+            }`}>
+              {msg.image && <img src={msg.image} alt="Captured" className="rounded-lg mb-2.5 max-h-32 sm:max-h-36 w-auto" />}
+              {msg.attachedFile && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/60 rounded-lg mb-2 text-[11px] text-[#1a73e8] w-fit max-w-full">
+                  <FileText size={11} className="shrink-0" />
+                  <span className="truncate max-w-[180px] font-medium">{msg.attachedFile.name}</span>
+                </div>
+              )}
+              <MarkdownContent text={msg.text} isUser={msg.role === 'user'} />
+              {msg.role === 'assistant' && msg.isGeneratingImage && <ImageGeneratingSkeleton />}
+              {msg.role === 'assistant' && msg.generatedImage && !msg.isGeneratingImage && (
+                <GeneratedImageCard
+                  imageBase64={msg.generatedImage}
+                  mimeType={msg.generatedImageMime || 'image/png'}
+                  caption={msg.imageCaption}
+                  onRegenerate={() => {
+                    const q = messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text;
+                    onVisualize(q, i);
+                  }}
+                  isRegenerating={false}
+                />
+              )}
+            </div>
+            <div className={`flex items-center gap-1.5 mt-1 px-1 flex-wrap ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {msg.source === 'voice' && (
+                <span className="text-[10px] text-[#9aa0a6] flex items-center gap-0.5"><Mic size={9} /> Voice</span>
+              )}
+              {msg.grounded && (
+                <span className="text-[10px] text-[#1e8e3e] flex items-center gap-0.5 bg-[#e6f4ea] px-1.5 py-0.5 rounded-full">
+                  <Globe size={9} /> Search
+                </span>
+              )}
+              {msg.role === 'assistant' && !msg.generatedImage && !msg.isGeneratingImage && (
+                <button
+                  onClick={() => {
+                    const q = messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text;
+                    onVisualize(q, i);
+                  }}
+                  className="text-[10px] text-[#9b72cb] flex items-center gap-0.5
+                             hover:bg-[#f3e8ff] active:bg-[#ede0ff] px-1.5 py-0.5 rounded-full
+                             transition-colors min-h-[24px]">
+                  <Palette size={9} /> Visualize
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {liveTranscript && (
+        <div className="flex gap-2 sm:gap-2.5 flex-row">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                          flex items-center justify-center shrink-0 mt-0.5">
+            <Sparkles size={12} className="text-white" />
+          </div>
+          <div className="max-w-[88%] sm:max-w-[82%] px-3.5 sm:px-4 py-2.5 bg-[#f8f9fa] border
+                          border-[#e8eaed] rounded-2xl rounded-tl-sm text-sm text-[#5f6368] italic">
+            {liveTranscript}
+            <span className="inline-block w-1 h-3.5 bg-[#4285f4] ml-0.5 animate-pulse rounded-sm" />
+          </div>
+        </div>
+      )}
+
+      {isSending && !liveTranscript && (
+        <div className="flex gap-2 sm:gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+                          flex items-center justify-center shrink-0">
+            <Sparkles size={12} className="text-white" />
+          </div>
+          <div className="bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-sm px-4 py-3.5">
+            <div className="flex gap-1.5 items-center">
+              {[0, 160, 320].map(d => (
+                <span key={d} className="w-2 h-2 bg-[#bdc1c6] rounded-full animate-bounce"
+                  style={{ animationDelay: `${d}ms` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      <div ref={chatEndRef} />
+    </div>
+  );
+}
+
+// ─── Desktop chat content (header + messages + input) ─────────────────────────
+
+function DesktopChatContent({
+  messages, liveTranscript, isSending, isCameraOn, chatInput, textareaRef, chatEndRef,
+  onInputChange, onSend, onCapture, onSuggestion, onVisualize, generateVisual,
+  uploadedFile, fileInputRef, onFileSelect, onFileClear,
+}: {
+  messages: ChatMessage[]; liveTranscript: string; isSending: boolean;
+  isCameraOn: boolean; chatInput: string;
+  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  chatEndRef: React.RefObject<HTMLDivElement>;
+  onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onSend: () => void; onCapture: () => void; onSuggestion: (s: string) => void;
+  onVisualize: (q: string, i: number) => void;
+  generateVisual: (q: string, i: number) => void;
+  uploadedFile: FileAttachment | null;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFileClear: () => void;
+}) {
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) return '🖼️';
+    if (mimeType === 'application/pdf') return '📄';
+    return '📝';
+  };
+
+  return (
+    <>
+      <div className="shrink-0 px-5 py-3 border-b border-[#f1f3f4] flex items-center gap-2.5">
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
+          <Sparkles size={13} className="text-white" />
+        </div>
+        <span className="text-sm font-medium text-[#202124]">Gemini Tutor</span>
+        <div className="ml-auto flex items-center gap-2">
+          {isCameraOn && (
+            <button onClick={onCapture} disabled={isSending}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                         text-[#1a73e8] bg-[#e8f0fe] hover:bg-[#d2e3fc] rounded-full
+                         transition-colors disabled:opacity-50">
+              <Camera size={11} /> Capture & Ask
+            </button>
+          )}
+          {messages.length > 0 && (
+            <span className="text-[10px] text-[#9aa0a6] bg-[#f1f3f4] px-2 py-0.5 rounded-full">{messages.length}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <ChatMessages
+          messages={messages} liveTranscript={liveTranscript} isSending={isSending}
+          chatEndRef={chatEndRef} onSuggestion={onSuggestion} onVisualize={onVisualize}
+        />
+      </div>
+
+      <div className="shrink-0 px-4 pb-4 pt-2 border-t border-[#f1f3f4]">
+        {/* File preview badge */}
+        {uploadedFile && (
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#e8f0fe] rounded-full text-xs text-[#1a73e8] max-w-full">
+              <span>{getFileIcon(uploadedFile.mimeType)}</span>
+              <span className="truncate max-w-[220px] font-medium">{uploadedFile.name}</span>
+              <button onClick={onFileClear} className="ml-1 hover:text-[#c5221f] transition-colors" title="Remover arquivo">
+                <X size={11} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="relative rounded-[24px] bg-[#f1f3f4] border border-transparent
+                        focus-within:bg-white focus-within:border-[#e0e0e0]
+                        focus-within:shadow-[0_2px_10px_rgba(0,0,0,0.12)] transition-all">
+          <textarea ref={textareaRef} value={chatInput}
+            onChange={onInputChange}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+            placeholder={uploadedFile ? `Pergunta sobre ${uploadedFile.name}…` : 'Ask Gemini Tutor…'}
+            rows={1} disabled={isSending}
+            className="w-full px-5 pt-4 pb-12 text-sm text-[#202124] bg-transparent resize-none
+                       outline-none placeholder:text-[#9aa0a6] leading-relaxed max-h-[160px]
+                       disabled:opacity-60"
+          />
+          <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              {/* File upload button */}
+              <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
+                title="Enviar arquivo (PDF, imagem, texto)"
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors
+                           ${uploadedFile ? 'text-[#1a73e8] bg-[#e8f0fe]' : 'text-[#5f6368] hover:bg-[#e8eaed]'}`}>
+                <Paperclip size={15} />
+              </button>
+              {isCameraOn && (
+                <button onClick={onCapture} disabled={isSending}
+                  className="w-8 h-8 rounded-full hover:bg-[#e8eaed] flex items-center justify-center
+                             transition-colors text-[#5f6368]" title="Capture & Ask">
+                  <Camera size={16} />
+                </button>
+              )}
+              <span className="text-[10px] text-[#bdc1c6] hidden lg:inline pl-1">
+                <CornerDownLeft size={9} className="inline mr-0.5" />Enter · Shift+Enter for newline
+              </span>
+            </div>
+            <button onClick={onSend} disabled={isSending || (!chatInput.trim() && !uploadedFile)}
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-all
+                         bg-[#1a73e8] hover:bg-[#1765cc] text-white shadow-sm
+                         disabled:bg-[#e8eaed] disabled:text-[#bdc1c6] disabled:shadow-none disabled:cursor-not-allowed">
+              <Send size={15} />
+            </button>
+          </div>
+        </div>
+        <p className="text-center text-[10px] text-[#bdc1c6] mt-1.5">
+          Gemini Tutor · Live Voice · AI Illustrations · Google Search · Google Cloud
+        </p>
+      </div>
+    </>
+  );
+}
+
+// ─── Mobile chat messages wrapper ─────────────────────────────────────────────
+
+function MobileChatMessages({
+  messages, liveTranscript, isSending, chatEndRef, onSuggestion, onVisualize, isCameraOn,
+}: {
+  messages: ChatMessage[]; liveTranscript: string; isSending: boolean;
+  chatEndRef: React.RefObject<HTMLDivElement>;
+  onSuggestion: (s: string) => void;
+  onVisualize: (q: string, i: number) => void;
+  isCameraOn: boolean;
+}) {
+  // When camera PiP is visible, add top padding so messages don't hide under it
+  return (
+    <ChatMessages
+      messages={messages} liveTranscript={liveTranscript} isSending={isSending}
+      chatEndRef={chatEndRef} onSuggestion={onSuggestion} onVisualize={onVisualize}
+      extraTopPad={isCameraOn}
+    />
+  );
+}
+
 // ─── Tutor Screen ─────────────────────────────────────────────────────────────
 
 function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void }) {
@@ -278,6 +576,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [chatInput, setChatInput]             = useState('');
   const [isSending, setIsSending]             = useState(false);
   const [liveTranscript, setLiveTranscript]   = useState('');
+  const [uploadedFile, setUploadedFile]       = useState<FileAttachment | null>(null);
 
   // Criterion 3: Cloud Firestore session via backend
   const [sessionId] = useState(() => {
@@ -303,6 +602,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const sendIntervalRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEndRef            = useRef<HTMLDivElement>(null);
   const textareaRef           = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef          = useRef<HTMLInputElement>(null);
   const isConnectedRef        = useRef(false);
   const isTearingDownRef      = useRef(false);
   const workletNodeRef        = useRef<AudioWorkletNode | null>(null);
@@ -431,22 +731,60 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }, []);
 
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const TEXT_TYPES = ['text/plain', 'text/markdown', 'text/csv', 'application/json', 'text/html', 'text/xml'];
+    const isText = TEXT_TYPES.some(t => file.type.startsWith(t)) || /\.(txt|md|csv|json|html|xml|py|js|ts|java|c|cpp|rs)$/i.test(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result;
+      if (!result) return;
+      if (isText) {
+        setUploadedFile({ name: file.name, mimeType: file.type || 'text/plain', data: result as string, isText: true });
+      } else {
+        // Binary file (PDF, image) — strip the data URL prefix to get raw base64
+        const base64 = (result as string).split(',')[1] || '';
+        setUploadedFile({ name: file.name, mimeType: file.type, data: base64, isText: false });
+      }
+    };
+
+    if (isText) {
+      reader.readAsText(file);
+    } else {
+      reader.readAsDataURL(file);
+    }
+
+    // Reset input so the same file can be selected again
+    e.target.value = '';
+  }, []);
+
   // ── Text Chat ──────────────────────────────────────────────────────────────
   const sendChatMessage = useCallback(async (includeImage = false) => {
     const text = chatInput.trim();
-    if (!text && !includeImage) return;
+    if (!text && !includeImage && !uploadedFile) return;
 
     const frameDataUrl = includeImage ? captureFrame() : null;
     const frameBase64  = frameDataUrl?.split(',')[1];
+    const currentFile  = uploadedFile;
+
+    const defaultText = currentFile
+      ? `Analisa este ficheiro: ${currentFile.name}`
+      : 'Please analyze this image and help me understand it.';
+
     const userMsg: ChatMessage = {
       role: 'user',
-      text: text || 'Please analyze this image and help me understand it.',
+      text: text || defaultText,
       image: frameDataUrl || undefined,
       source: 'text',
+      attachedFile: currentFile ? { name: currentFile.name, mimeType: currentFile.mimeType } : undefined,
     };
 
     setMessages(prev => [...prev, userMsg]);
     resetTextarea();
+    setUploadedFile(null);
     setIsSending(true);
     setError('');
 
@@ -467,6 +805,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           body: JSON.stringify({
             message: userMsg.text,
             image: frameBase64,
+            fileData: currentFile || undefined,
             sessionId,
             history: messages.slice(-12).map(m => ({ role: m.role, text: m.text })),
             generateImage: shouldVisualise,
@@ -485,7 +824,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         const ai = new GoogleGenAI({ apiKey });
         const parts: any[] = [];
         if (frameBase64) parts.push({ inlineData: { data: frameBase64, mimeType: 'image/jpeg' } });
-        parts.push({ text: userMsg.text });
+        if (currentFile && !currentFile.isText) {
+          parts.push({ inlineData: { data: currentFile.data, mimeType: currentFile.mimeType } });
+        }
+        let msgText = userMsg.text;
+        if (currentFile?.isText) {
+          msgText = `[Arquivo: ${currentFile.name}]\n\n${currentFile.data}\n\n---\n\n${msgText}`;
+        }
+        parts.push({ text: msgText });
         const histContents = messages.slice(-12).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
         histContents.push({ role: 'user', parts });
         const result = await ai.models.generateContent({
@@ -527,7 +873,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       setError(err.message || 'Failed to send message');
       setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, something went wrong: ${err.message}`, source: 'text' }]);
     } finally { setIsSending(false); }
-  }, [chatInput, captureFrame, messages, apiKey, sessionId, resetTextarea, generateVisual]);
+  }, [chatInput, captureFrame, messages, apiKey, sessionId, resetTextarea, generateVisual, uploadedFile]);
 
   // ── Live API: video frames ─────────────────────────────────────────────────
   const startSendingFrames = useCallback((session: any) => {
@@ -824,91 +1170,70 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
   useEffect(() => () => { stopCamera(); stopSession(); }, []);
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────────────
   //
-  // Layout strategy:
-  //   Mobile  (< md  ≤ 767px): tabs — Camera tab | Chat tab — full-screen each,
-  //                             bottom fixed controls bar, safe-area padding for notch.
-  //   Tablet  (md  768–1023px): side-by-side, video top-left, chat right, compact controls.
-  //   Desktop (lg  1024px+)  : side-by-side, video 44%, chat fills rest, more padding.
+  // Mobile  (<768px): full-screen chat, camera as floating PiP overlay,
+  //                   Gemini-style bottom input + FAB voice bar.
+  // Desktop (≥768px): side-by-side video + chat panel.
 
-  const [mobileTab, setMobileTab] = useState<'camera' | 'chat'>('chat');
+  const [camExpanded, setCamExpanded] = useState(false);
 
   return (
-    <div className="h-dvh bg-[#f8f9fa] text-[#202124] flex flex-col overflow-hidden"
+    <div className="h-dvh bg-[#f8f9fa] flex flex-col overflow-hidden select-none md:select-auto"
          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
 
+      {/* Hidden file input — shared between desktop and mobile */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.txt,.md,.csv,.json,.png,.jpg,.jpeg,.gif,.webp,.py,.js,.ts,.java,.c,.cpp"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="shrink-0 flex items-center justify-between
-                         px-4 md:px-6 py-2.5 bg-white border-b border-[#e8eaed]"
-              style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
-                       paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))' }}>
+      <header className="shrink-0 flex items-center justify-between px-4 md:px-6 h-14
+                         bg-white border-b border-[#e8eaed] z-10"
+              style={{ paddingLeft:  'max(1rem, env(safe-area-inset-left))',
+                       paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
         <button onClick={onBack}
-          className="flex items-center gap-2 text-[#5f6368] hover:text-[#202124] transition-colors min-h-[44px]">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
+          className="flex items-center gap-2.5 text-[#5f6368] hover:text-[#202124]
+                     transition-colors min-h-[44px] active:opacity-70">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
                           flex items-center justify-center shrink-0">
             <Sparkles className="text-white" size={16} />
           </div>
-          <span className="text-sm font-medium hidden sm:inline">Gemini Tutor</span>
+          <span className="text-sm font-medium text-[#202124] hidden sm:inline">Gemini Tutor</span>
         </button>
 
-        {/* Mobile tab switcher — only on mobile */}
-        <div className="flex md:hidden items-center bg-[#f1f3f4] rounded-full p-0.5 gap-0.5">
-          {(['camera', 'chat'] as const).map(tab => (
-            <button key={tab} onClick={() => setMobileTab(tab)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all min-h-[32px] ${
-                mobileTab === tab
-                  ? 'bg-white text-[#202124] shadow-sm'
-                  : 'text-[#5f6368]'
-              }`}>
-              {tab === 'camera' ? '📷 Camera' : '💬 Chat'}
-            </button>
-          ))}
-        </div>
-
-        {/* Status badge */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {isConnected && (
             <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px]
                              font-medium bg-[#e6f4ea] text-[#137333] border border-[#ceead6]">
               <Globe size={10} /> Search
             </span>
           )}
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ${
-            isConnected ? 'bg-[#e6f4ea] text-[#137333] border border-[#ceead6]'
-            : isConnecting ? 'bg-[#fef7e0] text-[#b06000] border border-[#fde58b]'
-            : 'bg-[#f1f3f4] text-[#5f6368] border border-[#e8eaed]'
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border ${
+            isConnected   ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6]'
+            : isConnecting ? 'bg-[#fef7e0] text-[#b06000] border-[#fde58b]'
+            :                'bg-[#f1f3f4] text-[#5f6368] border-[#e8eaed]'
           }`}>
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
               isConnected ? 'bg-[#34a853] animate-pulse'
               : isConnecting ? 'bg-[#fbbc05] animate-pulse'
               : 'bg-[#9aa0a6]'
             }`} />
-            <span className="hidden xs:inline">
-              {isConnected ? 'Live' : isConnecting ? 'Connecting' : 'Off'}
-            </span>
+            {isConnected ? 'Live' : isConnecting ? '…' : 'Off'}
           </span>
         </div>
       </header>
 
-      {/* ── Main content ────────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-hidden flex flex-col md:flex-row gap-0 md:gap-3
-                       md:p-3 lg:p-4 md:max-w-7xl md:mx-auto md:w-full">
+      {/* ── DESKTOP: side-by-side ────────────────────────────────────────────── */}
+      <div className="hidden md:flex flex-1 gap-3 p-3 lg:p-4 overflow-hidden max-w-7xl mx-auto w-full">
 
-        {/* ══ LEFT: Camera panel ══════════════════════════════════════════════ */}
-        {/* Mobile: shown only when mobileTab === 'camera'; tablet+: always visible */}
-        <div className={`
-          flex-col gap-2 md:gap-3
-          md:w-[42%] lg:w-[44%] md:shrink-0
-          ${mobileTab === 'camera' ? 'flex' : 'hidden md:flex'}
-          flex-1 md:flex-none
-          overflow-hidden
-          px-3 pt-3 pb-0 md:p-0
-        `}>
-
-          {/* Video */}
-          <div className="relative bg-[#1c1c1e] rounded-2xl overflow-hidden shadow-sm
-                          aspect-video md:aspect-video max-h-[38vh] md:max-h-none w-full">
+        {/* Desktop left — video + controls */}
+        <div className="flex flex-col gap-3 w-[42%] lg:w-[44%] shrink-0">
+          <div className="relative bg-[#1c1c1e] rounded-2xl overflow-hidden aspect-video shadow-sm flex-1">
             <video ref={videoRef} autoPlay playsInline muted
               className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} />
             {!isCameraOn && (
@@ -917,6 +1242,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 <p className="text-xs">Camera is off</p>
               </div>
             )}
+            {/* Note: on mobile the videoRef is used by the PiP overlay above.
+                The desktop panel is hidden on mobile so only one element uses the ref. */}
             {isConnected && (
               <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1
                               bg-black/55 backdrop-blur-sm rounded-full">
@@ -936,17 +1263,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             )}
           </div>
 
-          {/* Status + error */}
-          <p className="text-[11px] text-[#9aa0a6] text-center shrink-0">{statusMessage}</p>
+          <p className="text-[11px] text-[#9aa0a6] text-center">{statusMessage}</p>
           {error && (
-            <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl
-                            text-[#c5221f] text-xs text-center shrink-0">
+            <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl text-[#c5221f] text-xs text-center">
               {error}
             </div>
           )}
 
-          {/* Controls row — hidden on mobile (moved to bottom bar) */}
-          <div className="hidden md:flex items-center gap-2.5 justify-center flex-wrap shrink-0">
+          <div className="flex items-center gap-2.5 justify-center flex-wrap">
             <button onClick={isCameraOn ? stopCamera : startCamera}
               className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm ${
                 isCameraOn
@@ -955,7 +1279,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               }`}>
               {isCameraOn ? <Camera size={19} /> : <CameraOff size={19} />}
             </button>
-
             {isConnected && isModelSpeaking && (
               <button onClick={interruptAgent}
                 className="px-4 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
@@ -963,316 +1286,244 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 <StopCircle size={17} /> Interrupt
               </button>
             )}
-
             <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
               className={`px-5 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
                           transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed ${
-                isConnected
-                  ? 'bg-[#ea4335] text-white hover:bg-[#d93025]'
-                  : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
+                isConnected ? 'bg-[#ea4335] text-white hover:bg-[#d93025]' : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
               }`}>
-              {isConnected
-                ? <><MicOff size={17} /> Stop Voice</>
-                : isConnecting
-                  ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>Connecting...</>
-                  : <><Mic size={17} /> Start Voice</>
-              }
+              {isConnected ? <><MicOff size={17} /> Stop Voice</>
+                : isConnecting ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>Connecting...</>
+                : <><Mic size={17} /> Start Voice</>}
             </button>
           </div>
-
-          {/* Capture button on mobile camera tab */}
-          {isCameraOn && mobileTab === 'camera' && (
-            <button onClick={() => { sendChatMessage(true); setMobileTab('chat'); }}
-              disabled={isSending}
-              className="md:hidden shrink-0 mx-auto flex items-center gap-2 px-5 py-2.5
-                         rounded-full bg-[#1a73e8] text-white text-sm font-medium
-                         shadow-sm disabled:opacity-50 transition-all">
-              <Camera size={16} /> Capture & Ask
-            </button>
-          )}
         </div>
 
-        {/* ══ RIGHT: Chat panel ═══════════════════════════════════════════════ */}
-        <div className={`
-          flex-col bg-white md:rounded-2xl shadow-sm md:border border-[#e8eaed] overflow-hidden
-          flex-1
-          ${mobileTab === 'chat' ? 'flex' : 'hidden md:flex'}
-        `}>
+        {/* Desktop right — chat */}
+        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-[#e8eaed] overflow-hidden">
+          <DesktopChatContent
+            messages={messages} liveTranscript={liveTranscript} isSending={isSending}
+            isCameraOn={isCameraOn} chatInput={chatInput} textareaRef={textareaRef}
+            chatEndRef={chatEndRef}
+            onInputChange={handleInputChange}
+            onSend={() => sendChatMessage(false)}
+            onCapture={() => sendChatMessage(true)}
+            onSuggestion={(s) => { setChatInput(s); textareaRef.current?.focus(); }}
+            onVisualize={(q, i) => generateVisual(q, i)}
+            generateVisual={generateVisual}
+            uploadedFile={uploadedFile}
+            fileInputRef={fileInputRef}
+            onFileSelect={handleFileSelect}
+            onFileClear={() => setUploadedFile(null)}
+          />
+        </div>
+      </div>
 
-          {/* Chat header */}
-          <div className="shrink-0 px-4 py-2.5 border-b border-[#f1f3f4] flex items-center gap-2.5"
-               style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
-                        paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))' }}>
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                            flex items-center justify-center shrink-0">
-              <Sparkles size={13} className="text-white" />
-            </div>
-            <span className="text-sm font-medium text-[#202124]">Gemini Tutor</span>
-            <div className="ml-auto flex items-center gap-2">
-              {isCameraOn && (
-                <button onClick={() => sendChatMessage(true)} disabled={isSending}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
-                             text-[#1a73e8] bg-[#e8f0fe] hover:bg-[#d2e3fc] rounded-full
-                             transition-colors disabled:opacity-50 min-h-[32px]">
-                  <Camera size={11} /> Capture & Ask
-                </button>
-              )}
-              {messages.length > 0 && (
-                <span className="text-[10px] text-[#9aa0a6] bg-[#f1f3f4] px-2 py-0.5 rounded-full">
-                  {messages.length}
-                </span>
-              )}
+      {/* ── MOBILE: full-screen chat + PiP overlay ──────────────────────────── */}
+      <div className="md:hidden flex-1 flex flex-col overflow-hidden relative">
+
+        {/* Camera PiP overlay — top-right, tappable to expand */}
+        {isCameraOn && (
+          <div
+            className={`absolute z-20 top-3 right-3 overflow-hidden shadow-xl cursor-pointer
+                        transition-all duration-300 rounded-2xl border-2 border-white/30
+                        ${camExpanded
+                          ? 'left-0 right-0 top-0 rounded-none border-0 w-full h-[45vw] max-h-[280px]'
+                          : 'w-28 h-20'
+                        }`}
+            onClick={() => setCamExpanded(e => !e)}>
+            <MobileCamPreview stream={streamRef.current} />
+            {/* LIVE badge */}
+            {isConnected && (
+              <div className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5
+                              bg-black/60 backdrop-blur-sm rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#ea4335] animate-pulse" />
+                <span className="text-white text-[8px] font-bold tracking-widest">LIVE</span>
+              </div>
+            )}
+            {/* Speaking animation */}
+            {isModelSpeaking && (
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1
+                              px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full">
+                {[0, 120, 240].map(d => (
+                  <span key={d} className="w-1 rounded-full bg-[#4285f4] animate-bounce"
+                    style={{ height: '10px', animationDelay: `${d}ms` }} />
+                ))}
+              </div>
+            )}
+            {/* Expand / collapse hint */}
+            <div className="absolute bottom-1 right-1.5 text-[8px] text-white/60">
+              {camExpanded ? '▲' : '▼'}
             </div>
           </div>
+        )}
 
-          {/* Messages scroll area */}
-          <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 space-y-4">
-            {messages.length === 0 && !liveTranscript && (
-              <div className="h-full flex flex-col items-center justify-center gap-3 py-8 px-4">
-                <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br
-                                from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
-                  <Sparkles size={20} className="text-white" />
-                </div>
-                <div className="text-center">
-                  <p className="text-base font-medium text-[#202124] mb-1">How can I help you today?</p>
-                  <p className="text-xs text-[#9aa0a6] max-w-[260px]">
-                    Ask anything — visual topics get an AI illustration automatically.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 w-full max-w-xs mt-1">
-                  {[
-                    'Explain how photosynthesis works',
-                    'Describe the Krebs cycle',
-                    'How does DNA replication work?',
-                  ].map(s => (
-                    <button key={s}
-                      onClick={() => { setChatInput(s); textareaRef.current?.focus(); }}
-                      className="text-left px-4 py-2.5 rounded-xl border border-[#e8eaed] text-xs
-                                 text-[#5f6368] hover:bg-[#f8f9fa] hover:border-[#dadce0]
-                                 transition-colors flex items-center gap-2 min-h-[40px]">
-                      <Palette size={11} className="text-[#9b72cb] shrink-0" /> {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex gap-2 sm:gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                {msg.role === 'assistant' && (
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                                  flex items-center justify-center shrink-0 mt-0.5">
-                    <Sparkles size={11} className="text-white" />
-                  </div>
-                )}
-                <div className="max-w-[88%] sm:max-w-[82%]">
-                  <div className={`px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-[#e8f0fe] text-[#1a1a1a] rounded-2xl rounded-tr-sm'
-                      : 'bg-[#f8f9fa] text-[#3c4043] rounded-2xl rounded-tl-sm border border-[#e8eaed]'
-                  }`}>
-                    {msg.image && (
-                      <img src={msg.image} alt="Captured"
-                        className="rounded-lg mb-2.5 max-h-32 sm:max-h-36 w-auto" />
-                    )}
-                    <MarkdownContent text={msg.text} isUser={msg.role === 'user'} />
-
-                    {msg.role === 'assistant' && msg.isGeneratingImage && <ImageGeneratingSkeleton />}
-                    {msg.role === 'assistant' && msg.generatedImage && !msg.isGeneratingImage && (
-                      <GeneratedImageCard
-                        imageBase64={msg.generatedImage}
-                        mimeType={msg.generatedImageMime || 'image/png'}
-                        caption={msg.imageCaption}
-                        onRegenerate={() => generateVisual(
-                          messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text, i
-                        )}
-                        isRegenerating={false}
-                      />
-                    )}
-                  </div>
-
-                  {/* Metadata */}
-                  <div className={`flex items-center gap-1.5 mt-1 px-1 flex-wrap
-                                   ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {msg.source === 'voice' && (
-                      <span className="text-[10px] text-[#9aa0a6] flex items-center gap-0.5">
-                        <Mic size={9} /> Voice
-                      </span>
-                    )}
-                    {msg.grounded && (
-                      <span className="text-[10px] text-[#1e8e3e] flex items-center gap-0.5
-                                       bg-[#e6f4ea] px-1.5 py-0.5 rounded-full">
-                        <Globe size={9} /> Search
-                      </span>
-                    )}
-                    {msg.role === 'assistant' && !msg.generatedImage && !msg.isGeneratingImage && (
-                      <button
-                        onClick={() => {
-                          const q = messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text;
-                          generateVisual(q, i);
-                        }}
-                        className="text-[10px] text-[#9b72cb] flex items-center gap-0.5
-                                   hover:bg-[#f3e8ff] px-1.5 py-0.5 rounded-full transition-colors min-h-[24px]">
-                        <Palette size={9} /> Visualize
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {liveTranscript && (
-              <div className="flex gap-2 sm:gap-2.5 flex-row">
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                                flex items-center justify-center shrink-0 mt-0.5">
-                  <Sparkles size={11} className="text-white" />
-                </div>
-                <div className="max-w-[88%] sm:max-w-[82%] px-3.5 sm:px-4 py-2.5 bg-[#f8f9fa] border border-[#e8eaed]
-                                rounded-2xl rounded-tl-sm text-sm text-[#5f6368] italic">
-                  {liveTranscript}
-                  <span className="inline-block w-1 h-3.5 bg-[#4285f4] ml-0.5 animate-pulse rounded-sm" />
-                </div>
-              </div>
-            )}
-
-            {isSending && !liveTranscript && (
-              <div className="flex gap-2 sm:gap-2.5">
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                                flex items-center justify-center shrink-0">
-                  <Sparkles size={11} className="text-white" />
-                </div>
-                <div className="bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-sm px-4 py-3.5">
-                  <div className="flex gap-1.5 items-center">
-                    {[0, 160, 320].map(d => (
-                      <span key={d} className="w-2 h-2 bg-[#bdc1c6] rounded-full animate-bounce"
-                        style={{ animationDelay: `${d}ms` }} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
+        {/* Error banner */}
+        {error && (
+          <div className="absolute top-3 left-3 right-3 z-30 px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2]
+                          rounded-xl text-[#c5221f] text-xs text-center shadow-sm">
+            {error}
           </div>
+        )}
 
-          {/* ── Input area ───────────────────────────────────────────────────── */}
-          <div className="shrink-0 px-3 sm:px-4 pb-3 sm:pb-4 pt-2 border-t border-[#f1f3f4]"
-               style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
-                        paddingLeft:   'max(0.75rem, env(safe-area-inset-left, 0px))',
-                        paddingRight:  'max(0.75rem, env(safe-area-inset-right, 0px))' }}>
-            <div className="relative rounded-[22px] bg-[#f1f3f4] border border-transparent
-                            focus-within:bg-white focus-within:border-[#e0e0e0]
-                            focus-within:shadow-[0_2px_10px_rgba(0,0,0,0.1)] transition-all">
+        {/* Messages scroll area */}
+        <div className="flex-1 overflow-y-auto"
+             style={{ paddingLeft: 'env(safe-area-inset-left, 0px)',
+                      paddingRight: 'env(safe-area-inset-right, 0px)' }}>
+          <MobileChatMessages
+            messages={messages} liveTranscript={liveTranscript} isSending={isSending}
+            chatEndRef={chatEndRef}
+            onSuggestion={(s) => { setChatInput(s); textareaRef.current?.focus(); }}
+            onVisualize={(q, i) => generateVisual(q, i)}
+            isCameraOn={isCameraOn}
+          />
+        </div>
+
+        {/* ── Mobile input bar ─────────────────────────────────────────────── */}
+        <div className="shrink-0 bg-white border-t border-[#e8eaed]"
+             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                      paddingLeft:   'env(safe-area-inset-left, 0px)',
+                      paddingRight:  'env(safe-area-inset-right, 0px)' }}>
+
+          {/* Status pill */}
+          {isConnected && (
+            <div className="flex justify-center pt-1.5">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium ${
+                isModelSpeaking ? 'text-[#1a73e8] bg-[#e8f0fe]'
+                : 'text-[#9aa0a6] bg-[#f1f3f4]'
+              }`}>
+                {isModelSpeaking
+                  ? <><span className="w-1.5 h-1.5 rounded-full bg-[#1a73e8] animate-pulse" /> Speaking…</>
+                  : <><span className="w-1.5 h-1.5 rounded-full bg-[#34a853] animate-pulse" /> Listening</>
+                }
+              </span>
+            </div>
+          )}
+
+          {/* Gemini-style input pill */}
+          <div className="px-3 pt-2 pb-2">
+            {/* File preview badge */}
+            {uploadedFile && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#e8f0fe] rounded-full text-xs text-[#1a73e8] max-w-full">
+                  <span>{uploadedFile.mimeType.startsWith('image/') ? '🖼️' : uploadedFile.mimeType === 'application/pdf' ? '📄' : '📝'}</span>
+                  <span className="truncate max-w-[180px] font-medium">{uploadedFile.name}</span>
+                  <button onClick={() => setUploadedFile(null)} className="ml-1 hover:text-[#c5221f] transition-colors">
+                    <X size={11} />
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="flex items-end gap-2 bg-[#f1f3f4] rounded-[26px] px-2 py-2
+                            border border-transparent focus-within:bg-white
+                            focus-within:border-[#e0e0e0] focus-within:shadow-[0_1px_8px_rgba(0,0,0,0.1)]
+                            transition-all">
+
+              {/* Camera button — left of input */}
+              <button onClick={isCameraOn ? () => { stopCamera(); setCamExpanded(false); } : startCamera}
+                className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center
+                            transition-all active:scale-95 mb-0.5 ${
+                  isCameraOn
+                    ? 'bg-[#1a73e8] text-white'
+                    : 'text-[#5f6368] hover:bg-[#e8eaed]'
+                }`}
+                title={isCameraOn ? 'Camera on — tap to turn off' : 'Turn on camera'}>
+                {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
+              </button>
+
+              {/* File upload button */}
+              <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
+                title="Enviar arquivo"
+                className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center
+                            transition-all active:scale-95 mb-0.5 ${
+                  uploadedFile
+                    ? 'bg-[#e8f0fe] text-[#1a73e8]'
+                    : 'text-[#5f6368] hover:bg-[#e8eaed]'
+                }`}>
+                <Paperclip size={17} />
+              </button>
+
+              {/* Text area */}
               <textarea
                 ref={textareaRef} value={chatInput}
                 onChange={handleInputChange}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(false); } }}
-                placeholder="Ask Gemini Tutor..."
+                placeholder={uploadedFile ? `Pergunta sobre ${uploadedFile.name}…` : isConnected ? 'Ask or just speak…' : 'Ask Gemini Tutor…'}
                 rows={1} disabled={isSending}
-                className="w-full px-4 sm:px-5 pt-3.5 pb-11 text-sm text-[#202124] bg-transparent
-                           resize-none outline-none placeholder:text-[#9aa0a6] leading-relaxed
-                           max-h-[140px] sm:max-h-[180px] disabled:opacity-60"
+                className="flex-1 bg-transparent text-sm text-[#202124] resize-none outline-none
+                           placeholder:text-[#9aa0a6] leading-relaxed py-1.5 max-h-[120px]
+                           disabled:opacity-60 min-h-[36px]"
               />
-              <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  {isCameraOn && (
-                    <button onClick={() => sendChatMessage(true)} disabled={isSending}
-                      className="w-8 h-8 rounded-full hover:bg-[#e8eaed] flex items-center justify-center
-                                 transition-colors text-[#5f6368]" title="Capture & Ask">
-                      <Camera size={16} />
-                    </button>
-                  )}
-                  <span className="text-[10px] text-[#bdc1c6] hidden lg:inline pl-1">
-                    <CornerDownLeft size={9} className="inline mr-0.5" />Enter · Shift+Enter
-                  </span>
-                </div>
-                <button onClick={() => sendChatMessage(false)}
-                  disabled={isSending || !chatInput.trim()}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-all
-                             bg-[#1a73e8] hover:bg-[#1765cc] text-white shadow-sm
-                             disabled:bg-[#e8eaed] disabled:text-[#bdc1c6] disabled:shadow-none
-                             disabled:cursor-not-allowed">
-                  <Send size={15} />
+
+              {/* Right side — send or mic */}
+              {(chatInput.trim() || uploadedFile) ? (
+                <button onClick={() => sendChatMessage(false)} disabled={isSending}
+                  className="shrink-0 w-9 h-9 rounded-full bg-[#1a73e8] hover:bg-[#1765cc]
+                             text-white flex items-center justify-center transition-all
+                             active:scale-95 disabled:opacity-50 mb-0.5 shadow-sm">
+                  <Send size={16} />
                 </button>
-              </div>
+              ) : isCameraOn ? (
+                <button onClick={() => { sendChatMessage(true); }}
+                  disabled={isSending}
+                  className="shrink-0 w-9 h-9 rounded-full bg-[#e8f0fe] text-[#1a73e8]
+                             flex items-center justify-center transition-all active:scale-95
+                             disabled:opacity-50 mb-0.5">
+                  <Camera size={17} />
+                </button>
+              ) : (
+                <div className="shrink-0 w-9 h-9 mb-0.5" />
+              )}
             </div>
-            <p className="text-center text-[10px] text-[#bdc1c6] mt-1.5 hidden sm:block">
-              Gemini Tutor · Live Voice · AI Illustrations · Google Search · Google Cloud
-            </p>
+
+            {/* Bottom action row: interrupt | voice FAB | spacer */}
+            <div className="flex items-center justify-between mt-2 px-1">
+              {/* Left: interrupt when speaking */}
+              <div className="w-[72px] flex justify-start">
+                {isConnected && isModelSpeaking && (
+                  <button onClick={interruptAgent}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium
+                               bg-[#fef7e0] text-[#b06000] border border-[#fde58b] active:scale-95
+                               transition-all animate-pulse min-h-[36px]">
+                    <StopCircle size={14} /> Stop
+                  </button>
+                )}
+              </div>
+
+              {/* Centre: big voice FAB */}
+              <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
+                className={`w-14 h-14 rounded-full flex items-center justify-center
+                            transition-all active:scale-95 shadow-md disabled:opacity-50
+                            disabled:shadow-none ${
+                  isConnected
+                    ? 'bg-[#ea4335] text-white'
+                    : 'bg-[#1a73e8] text-white'
+                }`}
+                style={{ boxShadow: isConnected
+                  ? '0 4px 16px rgba(234,67,53,0.35)'
+                  : '0 4px 16px rgba(26,115,232,0.35)' }}>
+                {isConnected
+                  ? <MicOff size={24} />
+                  : isConnecting
+                    ? <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                    : <Mic size={24} />
+                }
+              </button>
+
+              {/* Right: spacer (symmetric) */}
+              <div className="w-[72px]" />
+            </div>
           </div>
         </div>
-      </main>
-
-      {/* ══ Mobile bottom controls bar ══════════════════════════════════════════
-          Fixed above the keyboard on mobile. Tabs switch between Camera/Chat.
-          Contains all voice controls in one swipeable row. */}
-      <div className="md:hidden shrink-0 bg-white border-t border-[#e8eaed] flex items-center
-                      justify-around px-4 py-2 gap-2"
-           style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
-                    paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
-                    paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))' }}>
-
-        {/* Camera toggle */}
-        <button onClick={isCameraOn ? stopCamera : startCamera}
-          className={`flex flex-col items-center gap-0.5 min-w-[52px] min-h-[44px] justify-center
-                      rounded-xl transition-all px-2 ${
-            isCameraOn ? 'text-[#1a73e8] bg-[#e8f0fe]' : 'text-[#5f6368]'
-          }`}>
-          {isCameraOn ? <Camera size={20} /> : <CameraOff size={20} />}
-          <span className="text-[9px] font-medium">{isCameraOn ? 'Camera' : 'Camera'}</span>
-        </button>
-
-        {/* Interrupt (shown when model is speaking) */}
-        {isConnected && isModelSpeaking ? (
-          <button onClick={interruptAgent}
-            className="flex flex-col items-center gap-0.5 min-w-[52px] min-h-[44px] justify-center
-                       rounded-xl bg-[#fef7e0] text-[#b06000] animate-pulse px-2">
-            <StopCircle size={20} />
-            <span className="text-[9px] font-medium">Stop</span>
-          </button>
-        ) : (
-          <div className="min-w-[52px]" />
-        )}
-
-        {/* Start / Stop Voice — centre, most prominent */}
-        <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
-          className={`flex flex-col items-center gap-0.5 min-w-[64px] min-h-[52px] justify-center
-                      rounded-2xl font-medium transition-all px-3 shadow-sm disabled:opacity-50 ${
-            isConnected
-              ? 'bg-[#ea4335] text-white'
-              : 'bg-[#1a73e8] text-white'
-          }`}>
-          {isConnected
-            ? <><MicOff size={22} /><span className="text-[9px]">Stop</span></>
-            : isConnecting
-              ? <><svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg><span className="text-[9px]">...</span></>
-              : <><Mic size={22} /><span className="text-[9px]">Voice</span></>
-          }
-        </button>
-
-        {/* Placeholder / spacer right side */}
-        <div className="min-w-[52px]" />
-
-        {/* Go to chat tab shortcut */}
-        <button onClick={() => setMobileTab('chat')}
-          className={`flex flex-col items-center gap-0.5 min-w-[52px] min-h-[44px] justify-center
-                      rounded-xl transition-all px-2 ${
-            mobileTab === 'chat' ? 'text-[#1a73e8] bg-[#e8f0fe]' : 'text-[#5f6368]'
-          }`}>
-          <MessageSquare size={20} />
-          <span className="text-[9px] font-medium">Chat</span>
-        </button>
       </div>
     </div>
   );
 }
-
-
 
 // ─── App Root ─────────────────────────────────────────────────────────────────
 

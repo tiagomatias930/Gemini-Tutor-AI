@@ -27,7 +27,7 @@ const app  = express();
 const PORT = parseInt(process.env.PORT || '8080');
 
 app.use(cors({ origin: true }));
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ const TEXT_MODEL  = 'gemini-2.5-flash';
 // Image generation model — produces images from text prompts.
 // Used to satisfy the hackathon requirement: "leverage... the creative power
 // of video/image generation" alongside the Gemini Live API.
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
+const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
 
 if (!GEMINI_API_KEY) {
   console.error('❌  GEMINI_API_KEY is not set. Get one at https://aistudio.google.com/apikey');
@@ -54,6 +54,7 @@ Your role is to:
 - Explain concepts clearly using simple language
 - Ask follow-up questions to check understanding
 - If you can see their homework (via an image), describe it and offer specific help
+- If you receive a document or file (PDF, text, book, study material), read it carefully and become a pedagogical guide: summarize key concepts, highlight important points, ask questions to check understanding, and help the student navigate the content progressively
 - Use the googleSearch tool to answer factual or current-events questions accurately
 - Respond in the same language the student uses
 Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
@@ -114,10 +115,18 @@ async function getHistory(sessionId: string): Promise<StoredMessage[]> {
 
 // ─── Text generation (with Google Search grounding) ──────────────────────────
 
+interface FileAttachment {
+  name: string;
+  mimeType: string;
+  data: string;   // base64 for binary files, plain text for text files
+  isText: boolean;
+}
+
 async function generateText(
   prompt: string,
   imageBase64?: string,
-  history?: Array<{ role: string; text: string }>
+  history?: Array<{ role: string; text: string }>,
+  fileData?: FileAttachment
 ): Promise<string> {
   const contents: Array<{ role: string; parts: any[] }> = [];
 
@@ -129,6 +138,18 @@ async function generateText(
 
   const parts: any[] = [];
   if (imageBase64) parts.push({ inlineData: { data: imageBase64, mimeType: 'image/jpeg' } });
+
+  if (fileData) {
+    if (fileData.isText) {
+      // Inject raw text content into the prompt so the model can read it
+      const fileContent = `[Arquivo recebido: ${fileData.name}]\n\n${fileData.data}\n\n---\n\n`;
+      prompt = fileContent + (prompt || 'Por favor lê este ficheiro e atua como meu guia pedagógico, ajudando-me a compreender o conteúdo passo a passo.');
+    } else {
+      // PDF or binary image — send as inlineData (Gemini supports PDF natively)
+      parts.push({ inlineData: { data: fileData.data, mimeType: fileData.mimeType } });
+    }
+  }
+
   parts.push({ text: prompt });
   contents.push({ role: 'user', parts });
 
@@ -210,8 +231,8 @@ app.get('/api/health', (_req, res) => {
 // ── Text chat + optional auto image generation ─────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, image, history, sessionId, generateImage: wantsImage } = req.body;
-    if (!message && !image) { res.status(400).json({ error: 'Message or image required' }); return; }
+    const { message, image, history, sessionId, generateImage: wantsImage, fileData } = req.body;
+    if (!message && !image && !fileData) { res.status(400).json({ error: 'Message, image, or file required' }); return; }
 
     let chatHistory = history;
     if (sessionId && (!history || !history.length)) {
@@ -219,8 +240,8 @@ app.post('/api/chat', async (req, res) => {
       chatHistory = stored.map(m => ({ role: m.role === 'assistant' ? 'model' : m.role, text: m.text }));
     }
 
-    const userText   = message || 'Please analyze this image and help me understand it.';
-    const textResponse = await generateText(userText, image, chatHistory);
+    const userText   = message || (fileData ? `Analisa este ficheiro: ${fileData.name}` : 'Please analyze this image and help me understand it.');
+    const textResponse = await generateText(userText, image, chatHistory, fileData);
 
     // Auto-detect if a generated image would help understanding.
     // Triggered when: caller requests it explicitly OR the topic matches visual keywords.

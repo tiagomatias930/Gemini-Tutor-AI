@@ -5,11 +5,7 @@ An AI-powered homework assistant — point your camera, use your voice, or type 
 
 ![React](https://img.shields.io/badge/React-19-blue) ![Vite](https://img.shields.io/badge/Vite-6-purple) ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-cyan) ![Express](https://img.shields.io/badge/Express-4-green) ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue) ![Cloud Run](https://img.shields.io/badge/Google_Cloud-Run-orange)
 
-
-## System Architecture
-
-![Gemini Tutor AI System Architecture](public/diagram.png)
-
+---
 
 
 ## English
@@ -221,7 +217,7 @@ O Gemini Tutor é uma aplicação web full-stack que funciona como um tutor de I
 |----------|----------------------------------------------------------------------------|
 | Frontend | React 19, Vite 6, Tailwind CSS 4, Lucide Icons, Motion                      |
 | Backend  | Node.js, Express 4, TypeScript, tsx                                         |
-| IA       | Google Gemini (`gemini-2.5-flash`) via Vertex AI ou `@google/genai` |
+| IA       | Google Gemini (`gemini-3.1-flash-lite-preview`) via Vertex AI ou `@google/genai` |
 | Deploy   | Docker, Google Cloud Run, Cloud Build                                       |
 
 

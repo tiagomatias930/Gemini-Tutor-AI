@@ -1,0 +1,64 @@
+Planejamento da Nova Atualizacao do Gemini Tutor
+
+Objetivo Geral
+Transformar o Gemini Tutor em uma plataforma educacional mais inclusiva, inteligente e interativa, ampliando a acessibilidade para usuarios com deficiencia auditiva, de fala e visual, ao mesmo tempo em que melhora a experiencia geral de todos os usuarios.
+
+Visao da Atualizacao
+Esta atualizacao tem como foco principal elevar o Gemini Tutor para um novo nivel de ensino assistido por IA. A proposta e combinar acessibilidade, explicacao pedagogica multimodal, memoria contextual, maior capacidade de leitura e recursos visuais de apoio, permitindo que o tutor ensine com mais clareza, adaptacao e eficiencia.
+
+Frentes Principais da Atualizacao
+
+1. Acessibilidade para usuarios surdos ou mudos
+- Implementar um avatar pedagogico capaz de se comunicar por gestos durante as explicacoes.
+- Garantir que o avatar acompanhe o conteudo em tempo real, mantendo coerencia com a aula ou resposta gerada.
+- Adaptar videos explicativos para incluir um avatar gesticulando todo o conteudo essencial.
+- Assegurar que a comunicacao continue didatica, clara e alinhada ao objetivo central do Gemini Tutor: ensinar com qualidade.
+
+2. Acessibilidade para usuarios cegos ou com baixa visao
+- Aprimorar a visao computacional para interpretar ambientes, objetos e situacoes ao redor do utilizador.
+- Permitir que o Gemini Tutor descreva o ambiente de forma detalhada e util, ajudando o usuario a construir uma percepcao mental do que esta ao seu redor.
+- Criar mecanismos de orientacao e alerta para aumentar seguranca, autonomia e compreensao do contexto.
+- Melhorar a geracao de conteudo explicativo em audio, com descricoes mais ricas e pedagogicas.
+
+3. Evolucao da experiencia para usuarios sem deficiencia
+- Expandir a memoria do Gemini Tutor para manter mais contexto entre interacoes e personalizar melhor o ensino.
+- Melhorar a capacidade de leitura e interpretacao de materiais, documentos e conteudos complexos.
+- Aumentar o poder computacional aplicado a raciocinio, resposta e organizacao do conhecimento.
+- Tornar as explicacoes mais profundas, mais rapidas e mais adaptadas ao perfil de aprendizagem do usuario.
+
+4. Recursos gerais para todos os usuarios
+- Implementar um whiteboard interativo para apoiar explicacoes visuais durante aulas e resolucoes passo a passo.
+- Permitir que o Gemini Tutor escreva e desenhe no quadro enquanto explica conceitos, contas, diagramas ou processos.
+- Fortalecer a geracao de videos e imagens explicativas como suporte ao ensino multimodal.
+- Padronizar a experiencia pedagogica para que cada recurso complemente o aprendizado, e nao apenas ilustre o conteudo.
+
+Entregas Prioritarias
+- Avatar gestual para explicacoes educacionais.
+- Melhorias em descricao assistida por visao computacional.
+- Expansao de memoria contextual do tutor.
+- Whiteboard interativo com demonstracao passo a passo.
+- Evolucao da geracao de conteudo multimodal: texto, audio, imagem e video.
+
+Impacto Esperado
+- Tornar o Gemini Tutor mais inclusivo e acessivel.
+- Melhorar a autonomia de usuarios com necessidades especificas.
+- Elevar a qualidade pedagogica das explicacoes.
+- Aumentar o nivel de personalizacao e inteligencia do sistema.
+- Posicionar o Gemini Tutor como uma plataforma educacional mais completa e diferenciada.
+
+Proposta de Fases
+
+Fase 1
+Estruturar memoria contextual, whiteboard interativo e melhorias gerais de desempenho pedagogico.
+
+Fase 2
+Implementar acessibilidade para usuarios surdos ou mudos, com avatar educacional por gestos e suporte em videos.
+
+Fase 3
+Expandir recursos para usuarios cegos ou com baixa visao, com visao computacional, descricao detalhada e alertas inteligentes.
+
+Fase 4
+Consolidar a experiencia multimodal completa, integrando texto, voz, imagem, video, quadro interativo e acessibilidade avancada.
+
+Direcao Estrategica
+Esta atualizacao deve ser tratada como um marco de evolucao do Gemini Tutor. O foco nao e apenas adicionar funcoes, mas construir uma plataforma de ensino mais humana, inclusiva, inteligente e preparada para diferentes realidades de aprendizagem.

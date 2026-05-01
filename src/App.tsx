@@ -5,6 +5,7 @@ import {
   BookOpen, ArrowRight, Volume2, MessageSquare,
   StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn, Paperclip, FileText,
 } from 'lucide-react';
+import { LandingPage } from './LandingPage';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1645,9 +1646,16 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 // ─── App Root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [screen, setScreen] = useState<'welcome' | 'tutor'>('welcome');
+  const [screen, setScreen] = useState<'landing' | 'welcome' | 'tutor'>('landing');
   const [apiKey, setApiKey] = useState('');
-  if (screen === 'welcome')
+
+  if (screen === 'landing') {
+    return <LandingPage onStartLearning={() => setScreen('welcome')} />;
+  }
+
+  if (screen === 'welcome') {
     return <WelcomeScreen onStart={k => { setApiKey(k); setScreen('tutor'); }} />;
-  return <TutorScreen apiKey={apiKey} onBack={() => setScreen('welcome')} />;
+  }
+
+  return <TutorScreen apiKey={apiKey} onBack={() => setScreen('landing')} />;
 }

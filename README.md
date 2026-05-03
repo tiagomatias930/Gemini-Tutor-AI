@@ -23,7 +23,11 @@ Gemini Tutor is a full-stack web application that acts as a patient AI tutor. It
 - **Camera Vision** — point your camera at your homework and get guidance
 - **Voice Chat** — talk to the tutor using your microphone
 - **Text Chat** — classic text conversation with image upload support
+- **AI Illustrations** — automatic AI-generated diagrams for visual topics
 - **Multilingual** — responds in the same language the student uses
+- **Dark / Light Theme** — toggle between dark and light mode on the landing page
+- **Language Switcher (EN/PT)** — switch the landing page interface between English and Portuguese
+- **Landing Page** — professional marketing page with features, case studies, and about sections
 
 
 ### Tech Stack
@@ -42,17 +46,23 @@ Gemini Tutor is a full-stack web application that acts as a patient AI tutor. It
 Gemini-Tutor-AI/
 ├── src/
 │   ├── App.tsx              # Main app (Welcome screen, Chat, Camera, Voice)
+│   ├── LandingPage.tsx      # Landing page (dark/light theme, EN/PT i18n)
+│   ├── i18n.ts              # Internationalization translations (EN/PT)
 │   ├── main.tsx             # React entry point
 │   └── index.css            # Global styles (Tailwind)
 ├── server/
 │   ├── index.ts             # Express server (API routes + static serving)
 │   ├── package.json
 │   └── tsconfig.json
+├── docs/
+│   └── Novas_Ideias.txt     # Future update planning document
 ├── package.json             # Frontend dependencies & scripts
 ├── vite.config.ts           # Vite configuration
 ├── tsconfig.json            # Frontend TypeScript config
 ├── Dockerfile               # Multi-stage build (frontend + backend)
 ├── deploy.sh                # One-command deploy to Google Cloud Run
+├── LICENSE                  # MIT License
+├── CONTRIBUTORS.md          # Project contributors
 └── README.md
 ```
 
@@ -202,6 +212,37 @@ This will:
 | `start` | `node dist/index.js` | Run compiled server |
 
 
+### Recent Updates
+
+- ✅ **Landing Page** — Professional marketing page with hero section, features, case studies, and about
+- ✅ **Dark / Light Theme** — Theme toggle on the landing page with smooth transitions and persistent preference
+- ✅ **Language Switcher (EN/PT)** — Full internationalization of the landing page interface
+- ✅ **AI-Generated Illustrations** — Automatic diagram/illustration generation for visual topics using Gemini
+- ✅ **File Upload Support** — Upload PDFs, images, and text files for AI analysis
+- ✅ **Student Context Memory** — In-session memory that adapts to the student's level and learning style
+- ✅ **Google Search Integration** — Grounded answers using web search for factual questions
+- ✅ **MIT License** — Open-source licensing with contributor documentation
+
+
+### Roadmap
+
+Upcoming updates planned for Gemini Tutor:
+
+| Phase | Focus | Description |
+|-------|-------|-------------|
+| **Phase 1** | 🧠 Core Improvements | Contextual memory expansion, interactive whiteboard, and pedagogical performance |
+| **Phase 2** | 🤟 Deaf/Mute Accessibility | Educational avatar with sign language gestures synced with explanations |
+| **Phase 3** | 👁️ Blind/Low Vision Accessibility | Computer vision for environment description, alerts, and rich audio explanations |
+| **Phase 4** | 🎯 Full Multimodal | Complete integration of text, voice, image, video, interactive whiteboard, and advanced accessibility |
+
+Key upcoming features:
+- **Interactive Whiteboard** — Step-by-step visual explanations with drawing support
+- **Sign Language Avatar** — Pedagogical avatar for deaf/mute users
+- **Computer Vision Assistance** — Environment description and orientation for blind/low vision users
+- **Enhanced Multimodal Content** — Improved video, image, and audio generation for teaching
+- **Deeper Personalization** — Extended memory and learning profile across sessions
+
+
 ---
 
 
@@ -214,7 +255,11 @@ O Gemini Tutor é uma aplicação web full-stack que funciona como um tutor de I
 - **Visão por Câmera** — aponte a câmera para o dever de casa e receba orientação
 - **Chat por Voz** — fale com o tutor usando o microfone
 - **Chat por Texto** — conversa clássica por texto com suporte a upload de imagens
+- **Ilustrações por IA** — diagramas gerados automaticamente por IA para tópicos visuais
 - **Multilíngue** — responde no mesmo idioma que o estudante utiliza
+- **Tema Escuro / Claro** — alternância entre modo escuro e claro na landing page
+- **Alternador de Idioma (EN/PT)** — troca da interface da landing page entre Inglês e Português
+- **Landing Page** — página de apresentação profissional com funcionalidades, casos de sucesso e sobre
 
 
 ### Stack Tecnológica
@@ -233,17 +278,23 @@ O Gemini Tutor é uma aplicação web full-stack que funciona como um tutor de I
 Gemini-Tutor-AI/
 ├── src/
 │   ├── App.tsx              # App principal (Ecrã de boas-vindas, Chat, Câmara, Voz)
+│   ├── LandingPage.tsx      # Landing page (tema escuro/claro, i18n EN/PT)
+│   ├── i18n.ts              # Traduções de internacionalização (EN/PT)
 │   ├── main.tsx             # Entry point React
 │   └── index.css            # Estilos globais (Tailwind)
 ├── server/
 │   ├── index.ts             # Servidor Express (rotas API + ficheiros estáticos)
 │   ├── package.json
 │   └── tsconfig.json
+├── docs/
+│   └── Novas_Ideias.txt     # Documento de planeamento de futuras atualizações
 ├── package.json             # Dependências e scripts do frontend
 ├── vite.config.ts           # Configuração do Vite
 ├── tsconfig.json            # Config TypeScript do frontend
 ├── Dockerfile               # Build multi-stage (frontend + backend)
 ├── deploy.sh                # Deploy com um comando para Google Cloud Run
+├── LICENSE                  # Licença MIT
+├── CONTRIBUTORS.md          # Contribuidores do projeto
 └── README.md
 ```
 
@@ -393,6 +444,37 @@ Isso irá:
 | `dev` | `tsx watch index.ts` | Servidor dev com auto-reload |
 | `build` | `tsc` | Compilar TypeScript |
 | `start` | `node dist/index.js` | Executar servidor compilado |
+
+
+### Atualizações Recentes
+
+- ✅ **Landing Page** — Página de apresentação profissional com secção hero, funcionalidades, casos de sucesso e sobre
+- ✅ **Tema Escuro / Claro** — Alternância de tema na landing page com transições suaves e preferência persistente
+- ✅ **Alternador de Idioma (EN/PT)** — Internacionalização completa da interface da landing page
+- ✅ **Ilustrações Geradas por IA** — Geração automática de diagramas/ilustrações para tópicos visuais usando Gemini
+- ✅ **Upload de Ficheiros** — Upload de PDFs, imagens e ficheiros de texto para análise por IA
+- ✅ **Memória de Contexto do Aluno** — Memória em sessão que se adapta ao nível e estilo de aprendizagem do aluno
+- ✅ **Integração Google Search** — Respostas fundamentadas usando pesquisa web para perguntas factuais
+- ✅ **Licença MIT** — Licenciamento open-source com documentação de contribuidores
+
+
+### Roteiro de Desenvolvimento
+
+Próximas atualizações planeadas para o Gemini Tutor:
+
+| Fase | Foco | Descrição |
+|------|------|-----------|
+| **Fase 1** | 🧠 Melhorias Base | Expansão de memória contextual, whiteboard interativo e desempenho pedagógico |
+| **Fase 2** | 🤟 Acessibilidade Surdos/Mudos | Avatar educacional com linguagem gestual sincronizada com explicações |
+| **Fase 3** | 👁️ Acessibilidade Cegos/Baixa Visão | Visão computacional para descrição do ambiente, alertas e explicações áudio detalhadas |
+| **Fase 4** | 🎯 Multimodal Completo | Integração total de texto, voz, imagem, vídeo, whiteboard interativo e acessibilidade avançada |
+
+Principais funcionalidades futuras:
+- **Whiteboard Interativo** — Explicações visuais passo a passo com suporte a desenho
+- **Avatar de Linguagem Gestual** — Avatar pedagógico para utilizadores surdos/mudos
+- **Assistência por Visão Computacional** — Descrição do ambiente e orientação para utilizadores cegos/baixa visão
+- **Conteúdo Multimodal Melhorado** — Geração melhorada de vídeo, imagem e áudio para ensino
+- **Personalização Profunda** — Memória expandida e perfil de aprendizagem entre sessões
 
 
 ---

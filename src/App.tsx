@@ -5,6 +5,7 @@ import {
   BookOpen, ArrowRight, Volume2, MessageSquare,
   StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn, Paperclip, FileText,
 } from 'lucide-react';
+import { LandingPage } from './LandingPage';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -58,9 +59,9 @@ Use this mental model to:
 Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
-const TEXT_MODEL  = 'gemini-2.5-flash';
+const TEXT_MODEL = 'gemini-2.5-flash';
 const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
-const LIVE_MODEL  = 'gemini-2.5-flash-native-audio-preview-12-2025';
+const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 // Topics where generating a visual diagram is highly beneficial
 const VISUAL_TOPIC_RE = /\b(explain|how does|how do|what is|describe|show|draw|diagram|illustrate|visualize|cycle|process|system|structure|anatomy|cell|molecule|atom|circuit|photosynthesis|mitosis|meiosis|krebs|dna|protein|evolution|ecosystem|solar system|water cycle|carbon cycle|nitrogen cycle|food chain|neural network|algorithm|data structure|sorting|equation|geometry|triangle|function|derivative|integral|wave|gravity|quantum|thermodynamics|osmosis|diffusion|respiration|digestion|heart|brain|lung|skeleton|muscle|revolution|empire|civilization|volcano|earthquake|plate tectonic|weather|ocean|atmosphere|electromagnetic)\b/i;
@@ -149,8 +150,8 @@ function MarkdownContent({ text, isUser }: { text: string; isUser: boolean }) {
       i++; continue;
     }
     if (line.startsWith('### ')) { nodes.push(<h3 key={i} className="text-sm font-semibold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(4))}</h3>); i++; continue; }
-    if (line.startsWith('## '))  { nodes.push(<h2 key={i} className="text-base font-bold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(3))}</h2>); i++; continue; }
-    if (line.startsWith('# '))   { nodes.push(<h1 key={i} className="text-lg font-bold mt-4 mb-2 text-[#202124]">{renderInline(line.slice(2))}</h1>); i++; continue; }
+    if (line.startsWith('## ')) { nodes.push(<h2 key={i} className="text-base font-bold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(3))}</h2>); i++; continue; }
+    if (line.startsWith('# ')) { nodes.push(<h1 key={i} className="text-lg font-bold mt-4 mb-2 text-[#202124]">{renderInline(line.slice(2))}</h1>); i++; continue; }
     if (line.match(/^[-*•]\s/)) {
       const items: React.ReactNode[] = [];
       while (i < lines.length && lines[i].match(/^[-*•]\s/)) {
@@ -260,22 +261,23 @@ function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
 
   return (
     <div className="min-h-dvh bg-white flex flex-col"
-         style={{ paddingTop: 'env(safe-area-inset-top, 0px)',
-                  paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+      }}>
       {/* Nav */}
       <nav className="w-full flex items-center justify-end px-4 sm:px-6 py-3 gap-4 text-sm text-slate-500">
         <a href="https://aistudio.google.com/api-keys" target="_blank"
-           className="hover:text-slate-800 hover:underline transition-colors">Get API Key</a>
+          className="hover:text-slate-800 hover:underline transition-colors">Get API Key</a>
         <a href="https://ai.google.dev/gemini-api/docs/live-api" target="_blank"
-           className="hover:text-slate-800 hover:underline transition-colors">Docs</a>
+          className="hover:text-slate-800 hover:underline transition-colors">Docs</a>
       </nav>
 
       {/* Centre content */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8">
         {/* Logo */}
-        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500
-                        flex items-center justify-center shadow-lg mb-6 sm:mb-8">
-          <Sparkles className="text-white" size={28} />
+        <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
+          <img src="./logoGT.png" alt="Logo" />
         </div>
 
         {/* Title — scales from 2.5rem on small mobile to 4rem on desktop */}
@@ -317,10 +319,10 @@ function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
         {/* Feature pills — wrap gracefully on small screens */}
         <div className="flex flex-wrap gap-2 sm:gap-3 mt-6 sm:mt-8 justify-center max-w-sm sm:max-w-none">
           {[
-            { icon: Camera,       label: 'Camera Vision' },
-            { icon: Mic,          label: 'Voice Chat' },
-            { icon: Palette,      label: 'AI Illustrations' },
-            { icon: Globe,        label: 'Web Search' },
+            { icon: Camera, label: 'Camera Vision' },
+            { icon: Mic, label: 'Voice Chat' },
+            { icon: Palette, label: 'AI Illustrations' },
+            { icon: Globe, label: 'Web Search' },
             { icon: MessageSquare, label: 'Text Chat' },
           ].map(({ icon: Icon, label }) => (
             <span key={label} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2
@@ -362,7 +364,7 @@ function ChatMessages({
   messages: ChatMessage[];
   liveTranscript: string;
   isSending: boolean;
-  chatEndRef: React.RefObject<HTMLDivElement>;
+  chatEndRef: React.RefObject<HTMLDivElement | null>;
   onSuggestion: (s: string) => void;
   onVisualize: (q: string, i: number) => void;
   extraTopPad?: boolean;
@@ -371,9 +373,9 @@ function ChatMessages({
     <div className={`px-3 sm:px-4 py-4 space-y-4 ${extraTopPad ? 'pt-[140px]' : ''}`}>
       {messages.length === 0 && !liveTranscript && (
         <div className="flex flex-col items-center justify-center gap-3 pt-16 pb-8 px-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
-            <Sparkles size={20} className="text-white" />
-          </div>
+          <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
+          <img src="./logoGT.png" alt="Logo" />
+        </div>
           <div className="text-center">
             <p className="text-base font-medium text-[#202124] mb-1">How can I help you today?</p>
             <p className="text-xs text-[#9aa0a6] max-w-[260px]">Ask anything — visual topics get an AI illustration automatically.</p>
@@ -398,17 +400,15 @@ function ChatMessages({
       {messages.map((msg, i) => (
         <div key={i} className={`flex gap-2 sm:gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
           {msg.role === 'assistant' && (
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                            flex items-center justify-center shrink-0 mt-0.5">
-              <Sparkles size={12} className="text-white" />
-            </div>
+            <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
+          <img src="./logoGT.png" alt="Logo" />
+        </div>
           )}
           <div className="max-w-[88%] sm:max-w-[82%]">
-            <div className={`px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm leading-relaxed ${
-              msg.role === 'user'
-                ? 'bg-[#e8f0fe] text-[#1a1a1a] rounded-2xl rounded-tr-sm'
-                : 'bg-[#f8f9fa] text-[#3c4043] rounded-2xl rounded-tl-sm border border-[#e8eaed]'
-            }`}>
+            <div className={`px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm leading-relaxed ${msg.role === 'user'
+              ? 'bg-[#e8f0fe] text-[#1a1a1a] rounded-2xl rounded-tr-sm'
+              : 'bg-[#f8f9fa] text-[#3c4043] rounded-2xl rounded-tl-sm border border-[#e8eaed]'
+              }`}>
               {msg.image && <img src={msg.image} alt="Captured" className="rounded-lg mb-2.5 max-h-32 sm:max-h-36 w-auto" />}
               {msg.attachedFile && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/60 rounded-lg mb-2 text-[11px] text-[#1a73e8] w-fit max-w-full">
@@ -459,10 +459,9 @@ function ChatMessages({
 
       {liveTranscript && (
         <div className="flex gap-2 sm:gap-2.5 flex-row">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                          flex items-center justify-center shrink-0 mt-0.5">
-            <Sparkles size={12} className="text-white" />
-          </div>
+          <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
+          <img src="./logoGT.png" alt="Logo" />
+        </div>
           <div className="max-w-[88%] sm:max-w-[82%] px-3.5 sm:px-4 py-2.5 bg-[#f8f9fa] border
                           border-[#e8eaed] rounded-2xl rounded-tl-sm text-sm text-[#5f6368] italic">
             {liveTranscript}
@@ -473,10 +472,9 @@ function ChatMessages({
 
       {isSending && !liveTranscript && (
         <div className="flex gap-2 sm:gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                          flex items-center justify-center shrink-0">
-            <Sparkles size={12} className="text-white" />
-          </div>
+          <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
+          <img src="./logoGT.png" alt="Logo" />
+        </div>
           <div className="bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-sm px-4 py-3.5">
             <div className="flex gap-1.5 items-center">
               {[0, 160, 320].map(d => (
@@ -501,14 +499,14 @@ function DesktopChatContent({
 }: {
   messages: ChatMessage[]; liveTranscript: string; isSending: boolean;
   isCameraOn: boolean; chatInput: string;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
-  chatEndRef: React.RefObject<HTMLDivElement>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  chatEndRef: React.RefObject<HTMLDivElement | null>;
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSend: () => void; onCapture: () => void; onSuggestion: (s: string) => void;
   onVisualize: (q: string, i: number) => void;
   generateVisual: (q: string, i: number) => void;
   uploadedFile: FileAttachment | null;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFileClear: () => void;
 }) {
@@ -521,8 +519,8 @@ function DesktopChatContent({
   return (
     <>
       <div className="shrink-0 px-5 py-3 border-b border-[#f1f3f4] flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] flex items-center justify-center">
-          <Sparkles size={13} className="text-white" />
+        <div className="w-8 h-8 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
+          <img src="./logoGT.png" alt="Logo" />
         </div>
         <span className="text-sm font-medium text-[#202124]">Gemini Tutor</span>
         <div className="ml-auto flex items-center gap-2">
@@ -615,7 +613,7 @@ function MobileChatMessages({
   messages, liveTranscript, isSending, chatEndRef, onSuggestion, onVisualize, isCameraOn,
 }: {
   messages: ChatMessage[]; liveTranscript: string; isSending: boolean;
-  chatEndRef: React.RefObject<HTMLDivElement>;
+  chatEndRef: React.RefObject<HTMLDivElement | null>;
   onSuggestion: (s: string) => void;
   onVisualize: (q: string, i: number) => void;
   isCameraOn: boolean;
@@ -634,22 +632,22 @@ function MobileChatMessages({
 
 function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void }) {
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [isConnected, setIsConnected]         = useState(false);
-  const [isConnecting, setIsConnecting]       = useState(false);
-  const [isCameraOn, setIsCameraOn]           = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isCameraOn, setIsCameraOn] = useState(false);
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
-  const [statusMessage, setStatusMessage]     = useState('Ready to start');
-  const [error, setError]                     = useState('');
-  const [messages, setMessages]               = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput]             = useState('');
-  const [isSending, setIsSending]             = useState(false);
-  const [liveTranscript, setLiveTranscript]   = useState('');
-  const [uploadedFile, setUploadedFile]       = useState<FileAttachment | null>(null);
+  const [statusMessage, setStatusMessage] = useState('Ready to start');
+  const [error, setError] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [uploadedFile, setUploadedFile] = useState<FileAttachment | null>(null);
 
   // ── Student context (in-session memory) ─────────────────────────────────
   const [studentContext, setStudentContext] = useState<StudentContext>(() => {
     const stored = sessionStorage.getItem('tutor_student_context');
-    if (stored) { try { return JSON.parse(stored); } catch {} }
+    if (stored) { try { return JSON.parse(stored); } catch { } }
     return { ...EMPTY_STUDENT_CONTEXT };
   });
   useEffect(() => {
@@ -669,29 +667,29 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     fetch(`/api/sessions/${sessionId}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.messages?.length) setMessages(d.messages.map((m: any) => ({ role: m.role, text: m.text, source: m.source }))); })
-      .catch(() => {});
+      .catch(() => { });
   }, [sessionId]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
-  const videoRef              = useRef<HTMLVideoElement>(null);
-  const sessionRef            = useRef<any>(null);
-  const streamRef             = useRef<MediaStream | null>(null);
-  const audioContextRef       = useRef<AudioContext | null>(null);
-  const sendIntervalRef       = useRef<ReturnType<typeof setInterval> | null>(null);
-  const chatEndRef            = useRef<HTMLDivElement>(null);
-  const textareaRef           = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef          = useRef<HTMLInputElement>(null);
-  const isConnectedRef        = useRef(false);
-  const isTearingDownRef      = useRef(false);
-  const workletNodeRef        = useRef<AudioWorkletNode | null>(null);
-  const audioStreamRef        = useRef<MediaStream | null>(null);
-  const playbackCtxRef        = useRef<AudioContext | null>(null);
-  const nextPlayTimeRef       = useRef<number>(0);
-  const scheduledSourcesRef   = useRef<AudioBufferSourceNode[]>([]);
-  const isModelSpeakingRef    = useRef(false);
-  const messagesRef           = useRef<ChatMessage[]>([]);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const sessionRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sendIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isConnectedRef = useRef(false);
+  const isTearingDownRef = useRef(false);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const playbackCtxRef = useRef<AudioContext | null>(null);
+  const nextPlayTimeRef = useRef<number>(0);
+  const scheduledSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const isModelSpeakingRef = useRef(false);
+  const messagesRef = useRef<ChatMessage[]>([]);
   const liveModelTranscriptRef = useRef('');
-  const liveUserTranscriptRef  = useRef('');
+  const liveUserTranscriptRef = useRef('');
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, liveTranscript]);
@@ -746,8 +744,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
     try {
       let imageBase64 = '';
-      let mimeType    = 'image/png';
-      let caption     = '';
+      let mimeType = 'image/png';
+      let caption = '';
 
       // Try backend first (Cloud Run)
       try {
@@ -759,8 +757,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         if (!res.ok) throw new Error(`Backend ${res.status}`);
         const data = await res.json();
         imageBase64 = data.imageBase64;
-        mimeType    = data.mimeType;
-        caption     = data.caption;
+        mimeType = data.mimeType;
+        caption = data.caption;
       } catch {
         // Fallback: direct Gemini image generation from browser
         if (!apiKey) throw new Error('Image generation unavailable.');
@@ -775,7 +773,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         for (const part of (response.candidates?.[0]?.content?.parts || [])) {
           if ((part as any).inlineData?.mimeType?.startsWith('image/')) {
             imageBase64 = (part as any).inlineData.data || '';
-            mimeType    = (part as any).inlineData.mimeType;
+            mimeType = (part as any).inlineData.mimeType;
           } else if ((part as any).text) {
             caption += (part as any).text;
           }
@@ -867,8 +865,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     if (!text && !includeImage && !uploadedFile) return;
 
     const frameDataUrl = includeImage ? captureFrame() : null;
-    const frameBase64  = frameDataUrl?.split(',')[1];
-    const currentFile  = uploadedFile;
+    const frameBase64 = frameDataUrl?.split(',')[1];
+    const currentFile = uploadedFile;
 
     const defaultText = currentFile
       ? `Analisa este ficheiro: ${currentFile.name}`
@@ -914,11 +912,11 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         });
         if (!res.ok) throw new Error(`Backend ${res.status}`);
         const data = await res.json();
-        response      = data.response;
-        grounded      = data.grounded ?? false;
-        autoImage     = data.generatedImage || null;
+        response = data.response;
+        grounded = data.grounded ?? false;
+        autoImage = data.generatedImage || null;
         autoImageMime = data.generatedImageMime || null;
-        autoCaption   = data.imageCaption || null;
+        autoCaption = data.imageCaption || null;
       } catch {
         // Client-side fallback with Google Search
         if (!apiKey) throw new Error('Backend unavailable and no API key provided.');
@@ -990,7 +988,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     const ctx = canvas.getContext('2d');
     sendIntervalRef.current = setInterval(() => {
       if (isTearingDownRef.current || !isConnectedRef.current || !sessionRef.current
-          || !videoRef.current || !ctx || !streamRef.current) return;
+        || !videoRef.current || !ctx || !streamRef.current) return;
       canvas.width = 640; canvas.height = 480;
       ctx.drawImage(videoRef.current, 0, 0, 640, 480);
       try { session.sendRealtimeInput({ media: { data: canvas.toDataURL('image/jpeg', 0.6).split(',')[1], mimeType: 'image/jpeg' } }); } catch { }
@@ -1153,11 +1151,11 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
             // Turn complete — commit transcripts + auto-generate visual if relevant
             if (msg.serverContent?.turnComplete) {
-              const userText  = liveUserTranscriptRef.current.trim();
+              const userText = liveUserTranscriptRef.current.trim();
               const modelText = liveModelTranscriptRef.current.trim();
 
               const newMessages: ChatMessage[] = [];
-              if (userText)  newMessages.push({ role: 'user',      text: userText,  source: 'voice' });
+              if (userText) newMessages.push({ role: 'user', text: userText, source: 'voice' });
               if (modelText) newMessages.push({ role: 'assistant', text: modelText, source: 'voice' });
 
               if (newMessages.length) {
@@ -1183,7 +1181,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 }));
               }
 
-              liveUserTranscriptRef.current  = '';
+              liveUserTranscriptRef.current = '';
               liveModelTranscriptRef.current = '';
               setLiveTranscript('');
               if (scheduledSourcesRef.current.length === 0) setModelSpeaking(false);
@@ -1297,7 +1295,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
   return (
     <div className="h-dvh bg-[#f8f9fa] flex flex-col overflow-hidden select-none md:select-auto"
-         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
 
       {/* Hidden file input — shared between desktop and mobile */}
       <input
@@ -1311,15 +1309,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="shrink-0 flex items-center justify-between px-4 md:px-6 h-14
                          bg-white border-b border-[#e8eaed] z-10"
-              style={{ paddingLeft:  'max(1rem, env(safe-area-inset-left))',
-                       paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
+        style={{
+          paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right))'
+        }}>
         <button onClick={onBack}
           className="flex items-center gap-2.5 text-[#5f6368] hover:text-[#202124]
                      transition-colors min-h-[44px] active:opacity-70">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570]
-                          flex items-center justify-center shrink-0">
-            <Sparkles className="text-white" size={16} />
+          <div className="w-8 h-8  flex items-center justify-center">
+            <img src="./logoGT.png" alt="Logo" />
           </div>
+
           <span className="text-sm font-medium text-[#202124] hidden sm:inline">Gemini Tutor</span>
         </button>
 
@@ -1330,16 +1330,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               <Globe size={10} /> Search
             </span>
           )}
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border ${
-            isConnected   ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6]'
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border ${isConnected ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6]'
             : isConnecting ? 'bg-[#fef7e0] text-[#b06000] border-[#fde58b]'
-            :                'bg-[#f1f3f4] text-[#5f6368] border-[#e8eaed]'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-              isConnected ? 'bg-[#34a853] animate-pulse'
+              : 'bg-[#f1f3f4] text-[#5f6368] border-[#e8eaed]'
+            }`}>
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isConnected ? 'bg-[#34a853] animate-pulse'
               : isConnecting ? 'bg-[#fbbc05] animate-pulse'
-              : 'bg-[#9aa0a6]'
-            }`} />
+                : 'bg-[#9aa0a6]'
+              }`} />
             {isConnected ? 'Live' : isConnecting ? '…' : 'Off'}
           </span>
         </div>
@@ -1389,11 +1387,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
           <div className="flex items-center gap-2.5 justify-center flex-wrap">
             <button onClick={isCameraOn ? stopCamera : startCamera}
-              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                isCameraOn
-                  ? 'bg-white text-[#5f6368] border border-[#dadce0] hover:bg-[#f8f9fa]'
-                  : 'bg-[#f1f3f4] text-[#9aa0a6] hover:bg-[#e8eaed]'
-              }`}>
+              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm ${isCameraOn
+                ? 'bg-white text-[#5f6368] border border-[#dadce0] hover:bg-[#f8f9fa]'
+                : 'bg-[#f1f3f4] text-[#9aa0a6] hover:bg-[#e8eaed]'
+                }`}>
               {isCameraOn ? <Camera size={19} /> : <CameraOff size={19} />}
             </button>
             {isConnected && isModelSpeaking && (
@@ -1405,15 +1402,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             )}
             <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
               className={`px-5 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
-                          transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed ${
-                isConnected ? 'bg-[#ea4335] text-white hover:bg-[#d93025]' : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
-              }`}>
+                          transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-[#ea4335] text-white hover:bg-[#d93025]' : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
+                }`}>
               {isConnected ? <><MicOff size={17} /> Stop Voice</>
                 : isConnecting ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>Connecting...</>
-                : <><Mic size={17} /> Start Voice</>}
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>Connecting...</>
+                  : <><Mic size={17} /> Start Voice</>}
             </button>
           </div>
         </div>
@@ -1447,9 +1443,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             className={`absolute z-20 top-3 right-3 overflow-hidden shadow-xl cursor-pointer
                         transition-all duration-300 rounded-2xl border-2 border-white/30
                         ${camExpanded
-                          ? 'left-0 right-0 top-0 rounded-none border-0 w-full h-[45vw] max-h-[280px]'
-                          : 'w-28 h-20'
-                        }`}
+                ? 'left-0 right-0 top-0 rounded-none border-0 w-full h-[45vw] max-h-[280px]'
+                : 'w-28 h-20'
+              }`}
             onClick={() => setCamExpanded(e => !e)}>
             <MobileCamPreview stream={streamRef.current} />
             {/* LIVE badge */}
@@ -1487,8 +1483,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
         {/* Messages scroll area */}
         <div className="flex-1 overflow-y-auto"
-             style={{ paddingLeft: 'env(safe-area-inset-left, 0px)',
-                      paddingRight: 'env(safe-area-inset-right, 0px)' }}>
+          style={{
+            paddingLeft: 'env(safe-area-inset-left, 0px)',
+            paddingRight: 'env(safe-area-inset-right, 0px)'
+          }}>
           <MobileChatMessages
             messages={messages} liveTranscript={liveTranscript} isSending={isSending}
             chatEndRef={chatEndRef}
@@ -1500,17 +1498,18 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
         {/* ── Mobile input bar ─────────────────────────────────────────────── */}
         <div className="shrink-0 bg-white border-t border-[#e8eaed]"
-             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-                      paddingLeft:   'env(safe-area-inset-left, 0px)',
-                      paddingRight:  'env(safe-area-inset-right, 0px)' }}>
+          style={{
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            paddingLeft: 'env(safe-area-inset-left, 0px)',
+            paddingRight: 'env(safe-area-inset-right, 0px)'
+          }}>
 
           {/* Status pill */}
           {isConnected && (
             <div className="flex justify-center pt-1.5">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium ${
-                isModelSpeaking ? 'text-[#1a73e8] bg-[#e8f0fe]'
+              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium ${isModelSpeaking ? 'text-[#1a73e8] bg-[#e8f0fe]'
                 : 'text-[#9aa0a6] bg-[#f1f3f4]'
-              }`}>
+                }`}>
                 {isModelSpeaking
                   ? <><span className="w-1.5 h-1.5 rounded-full bg-[#1a73e8] animate-pulse" /> Speaking…</>
                   : <><span className="w-1.5 h-1.5 rounded-full bg-[#34a853] animate-pulse" /> Listening</>
@@ -1541,11 +1540,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               {/* Camera button — left of input */}
               <button onClick={isCameraOn ? () => { stopCamera(); setCamExpanded(false); } : startCamera}
                 className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center
-                            transition-all active:scale-95 mb-0.5 ${
-                  isCameraOn
+                            transition-all active:scale-95 mb-0.5 ${isCameraOn
                     ? 'bg-[#1a73e8] text-white'
                     : 'text-[#5f6368] hover:bg-[#e8eaed]'
-                }`}
+                  }`}
                 title={isCameraOn ? 'Camera on — tap to turn off' : 'Turn on camera'}>
                 {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
               </button>
@@ -1554,11 +1552,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
                 title="Enviar arquivo"
                 className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center
-                            transition-all active:scale-95 mb-0.5 ${
-                  uploadedFile
+                            transition-all active:scale-95 mb-0.5 ${uploadedFile
                     ? 'bg-[#e8f0fe] text-[#1a73e8]'
                     : 'text-[#5f6368] hover:bg-[#e8eaed]'
-                }`}>
+                  }`}>
                 <Paperclip size={17} />
               </button>
 
@@ -1613,21 +1610,22 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
                 className={`w-14 h-14 rounded-full flex items-center justify-center
                             transition-all active:scale-95 shadow-md disabled:opacity-50
-                            disabled:shadow-none ${
-                  isConnected
+                            disabled:shadow-none ${isConnected
                     ? 'bg-[#ea4335] text-white'
                     : 'bg-[#1a73e8] text-white'
-                }`}
-                style={{ boxShadow: isConnected
-                  ? '0 4px 16px rgba(234,67,53,0.35)'
-                  : '0 4px 16px rgba(26,115,232,0.35)' }}>
+                  }`}
+                style={{
+                  boxShadow: isConnected
+                    ? '0 4px 16px rgba(234,67,53,0.35)'
+                    : '0 4px 16px rgba(26,115,232,0.35)'
+                }}>
                 {isConnected
                   ? <MicOff size={24} />
                   : isConnecting
                     ? <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                      </svg>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
                     : <Mic size={24} />
                 }
               </button>
@@ -1645,9 +1643,16 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 // ─── App Root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [screen, setScreen] = useState<'welcome' | 'tutor'>('welcome');
+  const [screen, setScreen] = useState<'landing' | 'welcome' | 'tutor'>('landing');
   const [apiKey, setApiKey] = useState('');
-  if (screen === 'welcome')
+
+  if (screen === 'landing') {
+    return <LandingPage onStartLearning={() => setScreen('welcome')} />;
+  }
+
+  if (screen === 'welcome') {
     return <WelcomeScreen onStart={k => { setApiKey(k); setScreen('tutor'); }} />;
-  return <TutorScreen apiKey={apiKey} onBack={() => setScreen('welcome')} />;
+  }
+
+  return <TutorScreen apiKey={apiKey} onBack={() => setScreen('landing')} />;
 }

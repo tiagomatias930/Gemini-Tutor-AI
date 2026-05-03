@@ -363,7 +363,7 @@ function ChatMessages({
   messages: ChatMessage[];
   liveTranscript: string;
   isSending: boolean;
-  chatEndRef: React.RefObject<HTMLDivElement>;
+  chatEndRef: React.RefObject<HTMLDivElement | null>;
   onSuggestion: (s: string) => void;
   onVisualize: (q: string, i: number) => void;
   extraTopPad?: boolean;
@@ -502,14 +502,14 @@ function DesktopChatContent({
 }: {
   messages: ChatMessage[]; liveTranscript: string; isSending: boolean;
   isCameraOn: boolean; chatInput: string;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
-  chatEndRef: React.RefObject<HTMLDivElement>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  chatEndRef: React.RefObject<HTMLDivElement | null>;
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSend: () => void; onCapture: () => void; onSuggestion: (s: string) => void;
   onVisualize: (q: string, i: number) => void;
   generateVisual: (q: string, i: number) => void;
   uploadedFile: FileAttachment | null;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFileClear: () => void;
 }) {
@@ -616,7 +616,7 @@ function MobileChatMessages({
   messages, liveTranscript, isSending, chatEndRef, onSuggestion, onVisualize, isCameraOn,
 }: {
   messages: ChatMessage[]; liveTranscript: string; isSending: boolean;
-  chatEndRef: React.RefObject<HTMLDivElement>;
+  chatEndRef: React.RefObject<HTMLDivElement | null>;
   onSuggestion: (s: string) => void;
   onVisualize: (q: string, i: number) => void;
   isCameraOn: boolean;

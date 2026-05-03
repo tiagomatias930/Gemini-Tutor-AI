@@ -47,7 +47,7 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
             {/* Logo */}
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500
                                     flex items-center justify-center shadow-lg mb-6 sm:mb-8">
-                      <Sparkles className="text-white" size={28} />
+                      <AutoAwesome className="text-white" fontSize="medium" />
                     </div>
             
                     {/* Title — scales from 2.5rem on small mobile to 4rem on desktop */}

@@ -68,6 +68,17 @@ export const translations = {
     // Theme
     lightMode: 'Light',
     darkMode: 'Dark',
+    // FAQ
+    faqTitle: 'Frequently Asked Questions',
+    faqSubtitle: 'Find answers to common questions about Gemini Tutor',
+    faq1Q: 'Is Gemini Tutor free?',
+    faq1A: 'You can start for free using your own Google Gemini API key. We also offer premium plans with more features and dedicated support.',
+    faq2Q: 'What subjects are covered?',
+    faq2A: 'Gemini Tutor covers over 150 subjects, including Mathematics, Programming, Physics, History, Languages, and more.',
+    faq3Q: 'Does it work on mobile?',
+    faq3A: 'Yes! Gemini Tutor is fully responsive and works perfectly on smartphones, tablets, and computers.',
+    faq4Q: 'Can I learn in my native language?',
+    faq4A: 'Absolutely. Gemini Tutor supports over 50 languages, including Portuguese, English, Spanish, and French.',
   },
   pt: {
     navHome: 'Início',
@@ -127,6 +138,17 @@ export const translations = {
     ctaBtn: 'Começar Grátis',
     lightMode: 'Claro',
     darkMode: 'Escuro',
+    // FAQ
+    faqTitle: 'Perguntas Frequentes',
+    faqSubtitle: 'Encontre respostas para as dúvidas mais comuns sobre o Gemini Tutor',
+    faq1Q: 'O Gemini Tutor é gratuito?',
+    faq1A: 'Você pode começar gratuitamente usando sua própria chave de API do Google Gemini. Também oferecemos planos premium com mais recursos.',
+    faq2Q: 'Quais disciplinas são cobertas?',
+    faq2A: 'O Gemini Tutor cobre mais de 150 disciplinas, incluindo Matemática, Programação, Física, História, Línguas e muito mais.',
+    faq3Q: 'Funciona no telemóvel?',
+    faq3A: 'Sim! O Gemini Tutor é totalmente responsivo e funciona perfeitamente em smartphones, tablets e computadores.',
+    faq4Q: 'Posso aprender no meu idioma nativo?',
+    faq4A: 'Com certeza. O Gemini Tutor suporta mais de 50 idiomas, incluindo Português, Inglês, Espanhol e Francês.',
   },
 } as const;
 

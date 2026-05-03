@@ -393,3 +393,18 @@ Isso irá:
 | `dev` | `tsx watch index.ts` | Servidor dev com auto-reload |
 | `build` | `tsc` | Compilar TypeScript |
 | `start` | `node dist/index.js` | Executar servidor compilado |
+
+
+---
+
+## License / Licença
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Este projeto está licenciado sob a Licença MIT - consulte o arquivo [LICENSE](LICENSE) para obter detalhes.
+
+## Authors / Autores
+
+* **Tiago Matias** - *Initial work* - [tiagomatias930](https://github.com/tiagomatias930)
+
+See also the list of [contributors](CONTRIBUTORS.md) who participated in this project.

@@ -45,18 +45,14 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500
-                                    flex items-center justify-center shadow-lg mb-6 sm:mb-8">
-                      <AutoAwesome className="text-white" fontSize="medium" />
-                    </div>
-            
-                    {/* Title — scales from 2.5rem on small mobile to 4rem on desktop */}
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-800 mb-3 text-center leading-tight">
-                      <span className="text-[#4285f4]">G</span><span className="text-[#ea4335]">e</span>
-                      <span className="text-[#fbbc05]">m</span><span className="text-[#4285f4]">i</span>
-                      <span className="text-[#34a853]">n</span><span className="text-[#ea4335]">i</span>
-                      <span className="text-slate-800"> Tutor</span>
-                    </h1>
+
+            {/* Title — scales from 2.5rem on small mobile to 4rem on desktop */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-800 mb-3 text-center leading-tight">
+              <span className="text-[#4285f4]">G</span><span className="text-[#ea4335]">e</span>
+              <span className="text-[#fbbc05]">m</span><span className="text-[#4285f4]">i</span>
+              <span className="text-[#34a853]">n</span><span className="text-[#ea4335]">i</span>
+              <span className="text-slate-800"> Tutor</span>
+            </h1>
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8">
               {[
@@ -68,11 +64,10 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id)}
-                  className={`text-sm font-medium transition ${
-                    activeNav === item.id
-                      ? 'text-[#1a73e8]'
-                      : 'text-[#5f6368] hover:text-[#1a73e8]'
-                  }`}
+                  className={`text-sm font-medium transition ${activeNav === item.id
+                    ? 'text-[#1a73e8]'
+                    : 'text-[#5f6368] hover:text-[#1a73e8]'
+                    }`}
                 >
                   {item.label}
                 </button>
@@ -140,7 +135,7 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
                   </span>
                 </h1>
                 <p className="text-xl text-[#5f6368]">
-                  Get personalized tutoring with voice, video, and AI-generated illustrations. 
+                  Get personalized tutoring with voice, video, and AI-generated illustrations.
                   Gemini Tutor adapts to your learning style and pace.
                 </p>
               </div>
@@ -168,8 +163,8 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
             <div className="relative hidden lg:block">
               <div className="relative w-full aspect-square">
                 {/* Gradient background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#f8f9fa] via-white to-transparent rounded-3xl" style={{ background: `url('/Main.jpg')`, opacity: 0.6, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}/>
-                
+                <div className="absolute inset-0 bg-gradient-to-br from-[#f8f9fa] via-white to-transparent rounded-3xl" style={{ background: `url('/Main.jpg')`, opacity: 0.6, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+
                 {/* Floating cards */}
                 <div className="absolute top-0 right-0 w-48 h-32 bg-white rounded-2xl shadow-lg p-6 transform hover:scale-105 transition">
                   <div className="flex items-center gap-3 mb-3">
@@ -203,9 +198,9 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
               </div>
             </div>
           </div>
-          </div>
+        </div>
       </section>
-    
+
 
       {/* ─── FEATURES SECTION ─── */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
@@ -342,8 +337,8 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
               }
             ].map((story, idx) => (
               <div key={idx} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition">
-                <img 
-                  src={`${story.avatar}?s=80`} 
+                <img
+                  src={`${story.avatar}?s=80`}
                   alt={story.name}
                   className="w-16 h-16 rounded-full mb-4 border-2 border-[#e8eaed] object-cover"
                 />
@@ -365,12 +360,12 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
               <h2 className="text-4xl lg:text-5xl font-bold mb-6">About Gemini Tutor</h2>
               <div className="space-y-6 text-[#202124]">
                 <p>
-                  Gemini Tutor is powered by Google's advanced Gemini AI, bringing state-of-the-art 
-                  artificial intelligence to personalized education. We believe every student deserves 
+                  Gemini Tutor is powered by Google's advanced Gemini AI, bringing state-of-the-art
+                  artificial intelligence to personalized education. We believe every student deserves
                   access to a patient, knowledgeable tutor available 24/7.
                 </p>
                 <p>
-                  Our platform combines the latest in AI technology with proven pedagogical methods, 
+                  Our platform combines the latest in AI technology with proven pedagogical methods,
                   allowing students to learn at their own pace, in their own style, and in their preferred language.
                 </p>
                 <div className="space-y-3">
@@ -427,8 +422,8 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
       </section>
 
       {/* ─── CONTACT SECTION ─── */}
-      
-      
+
+
     </div>
   );
 }

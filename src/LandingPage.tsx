@@ -166,7 +166,7 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
                 <div className="absolute inset-0 bg-gradient-to-br from-[#f8f9fa] via-white to-transparent rounded-3xl" style={{ background: `url('/Main.jpg')`, opacity: 0.6, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
 
                 {/* Floating cards */}
-                <div className="absolute top-0 right-0 w-48 h-32 bg-white rounded-2xl shadow-lg p-6 transform hover:scale-105 transition">
+                <div className="absolute top-1 right-1 w-38 h-32 bg-white rounded-2xl shadow-lg p-6 transform hover:scale-105 transition">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 bg-[#e8f0fe] rounded-lg flex items-center justify-center">
                       <Psychology sx={{ fontSize: 20, color: '#1a73e8' }} />
@@ -176,7 +176,7 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
                   <p className="text-xs text-gray-600">Personalized paths for each student</p>
                 </div>
 
-                <div className="absolute bottom-0 left-0 w-48 h-32 bg-white rounded-2xl shadow-lg p-6 transform hover:scale-105 transition">
+                <div className="absolute bottom-1 left-1 w-38 h-32 bg-white rounded-2xl shadow-lg p-6 transform hover:scale-105 transition">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 bg-[#fce5cd] rounded-lg flex items-center justify-center">
                       <VolumeUp sx={{ fontSize: 20, color: '#d33b27' }} />
@@ -186,7 +186,7 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
                   <p className="text-xs text-gray-600">Natural conversation learning</p>
                 </div>
 
-                <div className="absolute bottom-1/4 right-8 w-40 h-40 bg-white rounded-2xl shadow-lg p-6 transform hover:scale-105 transition">
+                <div className="absolute bottom-1/4 right-8 w-38 h-32 bg-white rounded-2xl shadow-lg p-6 transform hover:scale-105 transition">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 bg-[#e6f4ea] rounded-lg flex items-center justify-center">
                       <CheckCircle sx={{ fontSize: 20, color: '#188038' }} />
@@ -373,33 +373,18 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
                     'Personalized learning paths based on student level',
                     'Multi-modal support: voice, video, and text',
                     'Support for 150+ subjects and topics',
-                    '24/7 availability - learn whenever you want',
-                    'Powered by Google Gemini AI'
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3">
-                      <CheckCircle sx={{ fontSize: 24, color: '#188038', flexShrink: 0, marginTop: '2px' }} />
-                      <span>{item}</span>
-                    </div>
-                  ))}
+                    '24/7 availability - learn whenever you want']
+                    .map((item) => 
+                      (
+                      <div className="flex items-start gap-3">
+                        <CheckCircle sx={{ fontSize: 24, color: '#188038', flexShrink: 0, marginTop: '2px' }} />
+                        <span>{item}</span>
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: '50K+', description: 'Active Students' },
-                { label: '150+', description: 'Subjects' },
-                { label: '98%', description: 'Satisfaction' },
-                { label: '24/7', description: 'Always Available' }
-              ].map((stat, idx) => (
-                <div
-                  key={idx}
-                  className="bg-gradient-to-br from-[#f1f3f4] to-[#e8eaed] rounded-2xl p-8 text-center border border-[#dadce0]"
-                >
-                  <div className="text-3xl font-bold text-[#1a73e8] mb-2">{stat.label}</div>
-                  <p className="text-sm text-[#5f6368]">{stat.description}</p>
-                </div>
-              ))}
-            </div>
+
           </div>
         </div>
       </section>
@@ -420,10 +405,6 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
           </button>
         </div>
       </section>
-
-      {/* ─── CONTACT SECTION ─── */}
-
-
     </div>
   );
 }

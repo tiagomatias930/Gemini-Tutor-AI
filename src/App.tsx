@@ -519,7 +519,7 @@ function DesktopChatContent({
   return (
     <>
       <div className="shrink-0 px-5 py-3 border-b border-[#f1f3f4] flex items-center gap-2.5">
-        <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
+        <div className="w-8 h-8 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
           <img src="./logoGT.png" alt="Logo" />
         </div>
         <span className="text-sm font-medium text-[#202124]">Gemini Tutor</span>

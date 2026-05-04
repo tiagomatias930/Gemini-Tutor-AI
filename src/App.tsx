@@ -272,27 +272,28 @@ function ChatMessages({
   extraTopPad?: boolean;
 }) {
   return (
-    <div className={`px-3 sm:px-4 py-4 space-y-4 ${extraTopPad ? 'pt-[140px]' : ''}`}>
+    <div className={`px-3 sm:px-4 py-6 space-y-6 ${extraTopPad ? 'pt-[140px]' : ''}`}>
       {messages.length === 0 && !liveTranscript && (
-        <div className="flex flex-col items-center justify-center gap-3 pt-16 pb-8 px-4">
-          <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
-          <img src="./logoGT.png" alt="Logo" />
-        </div>
-          <div className="text-center">
-            <p className="text-base font-medium text-[#202124] mb-1">How can I help you today?</p>
-            <p className="text-xs text-[#9aa0a6] max-w-[260px]">Ask anything — visual topics get an AI illustration automatically.</p>
+        <div className="flex flex-col items-center justify-center gap-6 pt-16 pb-8 px-4">
+          <div className="w-20 h-20 rounded-3xl bg-white/40 backdrop-blur-xl border border-white/40 flex items-center justify-center mb-2 shadow-2xl shadow-blue-500/10">
+            <img src="./logoGT.png" alt="Logo" className="w-12 h-12" />
           </div>
-          <div className="flex flex-col gap-2 w-full max-w-[280px] mt-1">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-[#1a1c1e] tracking-tight">How can I help you study?</h2>
+            <p className="text-sm text-[#5f6368] max-w-[260px] mx-auto">Ask anything — visual topics get an AI illustration automatically.</p>
+          </div>
+          <div className="flex flex-col gap-3 w-full max-w-[320px] mt-4">
             {[
-              'Explain how photosynthesis works',
-              'Describe the Krebs cycle',
-              'How does DNA replication work?',
+              { text: 'Explain how photosynthesis works', icon: <Palette size={14} /> },
+              { text: 'Describe the Krebs cycle', icon: <Palette size={14} /> },
+              { text: 'How does DNA replication work?', icon: <Palette size={14} /> },
             ].map(s => (
-              <button key={s} onClick={() => onSuggestion(s)}
-                className="text-left px-4 py-3 rounded-2xl border border-[#e8eaed] text-xs
-                           text-[#5f6368] hover:bg-[#f8f9fa] active:bg-[#f1f3f4]
-                           transition-colors flex items-center gap-2 min-h-[44px]">
-                <Palette size={11} className="text-[#9b72cb] shrink-0" /> {s}
+              <button key={s.text} onClick={() => onSuggestion(s.text)}
+                className="text-left px-5 py-4 rounded-2xl border border-white/60 bg-white/30 backdrop-blur-md 
+                           text-sm text-[#3c4043] hover:bg-white/60 hover:scale-[1.02] active:scale-[0.98]
+                           transition-all flex items-center gap-3 shadow-sm shadow-black/5">
+                <span className="p-1.5 rounded-lg bg-purple-500/10 text-[#9b72cb]">{s.icon}</span>
+                {s.text}
               </button>
             ))}
           </div>
@@ -300,25 +301,27 @@ function ChatMessages({
       )}
 
       {messages.map((msg, i) => (
-        <div key={i} className={`flex gap-2 sm:gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+        <div key={i} className={`flex gap-3 sm:gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
           {msg.role === 'assistant' && (
-            <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
-          <img src="./logoGT.png" alt="Logo" />
-        </div>
+            <div className="w-9 h-9 rounded-xl bg-white shadow-md flex items-center justify-center shrink-0 border border-gray-100 mt-1">
+              <img src="./logoGT.png" alt="Logo" className="w-6 h-6" />
+            </div>
           )}
-          <div className="max-w-[88%] sm:max-w-[82%]">
-            <div className={`px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm leading-relaxed ${msg.role === 'user'
-              ? 'bg-[#e8f0fe] text-[#1a1a1a] rounded-2xl rounded-tr-sm'
-              : 'bg-[#f8f9fa] text-[#3c4043] rounded-2xl rounded-tl-sm border border-[#e8eaed]'
+          <div className={`max-w-[88%] sm:max-w-[80%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+            <div className={`px-4 sm:px-5 py-3 sm:py-4 text-sm leading-relaxed shadow-sm transition-all duration-300 ${msg.role === 'user'
+              ? 'bg-[#1a73e8] text-white rounded-2xl rounded-tr-none shadow-blue-500/20'
+              : 'bg-white/70 backdrop-blur-lg text-[#1f1f1f] rounded-2xl rounded-tl-none border border-white/60'
               }`}>
-              {msg.image && <img src={msg.image} alt="Captured" className="rounded-lg mb-2.5 max-h-32 sm:max-h-36 w-auto" />}
+              {msg.image && <div className="rounded-xl overflow-hidden mb-3 border border-white/20 shadow-lg"><img src={msg.image} alt="Captured" className="max-h-48 w-auto object-contain" /></div>}
               {msg.attachedFile && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/60 rounded-lg mb-2 text-[11px] text-[#1a73e8] w-fit max-w-full">
-                  <FileText size={11} className="shrink-0" />
-                  <span className="truncate max-w-[180px] font-medium">{msg.attachedFile.name}</span>
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 text-xs font-medium w-fit max-w-full ${msg.role === 'user' ? 'bg-white/15' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
+                  <FileText size={14} className="shrink-0" />
+                  <span className="truncate max-w-[200px]">{msg.attachedFile.name}</span>
                 </div>
               )}
-              <MarkdownContent text={msg.text} isUser={msg.role === 'user'} />
+              <div className="prose prose-sm max-w-none">
+                <MarkdownContent text={msg.text} isUser={msg.role === 'user'} />
+              </div>
               {msg.role === 'assistant' && msg.isGeneratingImage && <ImageGeneratingSkeleton />}
               {msg.role === 'assistant' && msg.generatedImage && !msg.isGeneratingImage && (
                 <GeneratedImageCard
@@ -333,13 +336,13 @@ function ChatMessages({
                 />
               )}
             </div>
-            <div className={`flex items-center gap-1.5 mt-1 px-1 flex-wrap ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`flex items-center gap-2 mt-2 px-1 flex-wrap ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
               {msg.source === 'voice' && (
-                <span className="text-[10px] text-[#9aa0a6] flex items-center gap-0.5"><Mic size={9} /> Voice</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#9aa0a6] flex items-center gap-1 bg-gray-100/50 px-2 py-0.5 rounded"><Mic size={10} /> Voice</span>
               )}
               {msg.grounded && (
-                <span className="text-[10px] text-[#1e8e3e] flex items-center gap-0.5 bg-[#e6f4ea] px-1.5 py-0.5 rounded-full">
-                  <Globe size={9} /> Search
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1e8e3e] flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded">
+                  <Globe size={10} /> Search
                 </span>
               )}
               {msg.role === 'assistant' && !msg.generatedImage && !msg.isGeneratingImage && (
@@ -348,10 +351,10 @@ function ChatMessages({
                     const q = messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text;
                     onVisualize(q, i);
                   }}
-                  className="text-[10px] text-[#9b72cb] flex items-center gap-0.5
-                             hover:bg-[#f3e8ff] active:bg-[#ede0ff] px-1.5 py-0.5 rounded-full
-                             transition-colors min-h-[24px]">
-                  <Palette size={9} /> Visualize
+                  className="text-[10px] font-bold uppercase tracking-wider text-[#9b72cb] flex items-center gap-1
+                             hover:bg-purple-50 active:scale-95 px-2 py-0.5 rounded-lg
+                             transition-all bg-purple-50/50 border border-purple-100/50">
+                  <Palette size={10} /> Visualize
                 </button>
               )}
             </div>
@@ -420,90 +423,86 @@ function DesktopChatContent({
 
   return (
     <>
-      <div className="shrink-0 px-5 py-3 border-b border-[#f1f3f4] flex items-center gap-2.5">
-        <div className="w-8 h-8 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
-          <img src="./logoGT.png" alt="Logo" />
+      <div className="shrink-0 px-6 py-4 border-b border-white/40 flex items-center justify-between bg-white/20 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+          <span className="text-xs font-bold text-[#1a1c1e] uppercase tracking-widest opacity-80">Conversation Context</span>
         </div>
-        <span className="text-sm font-medium text-[#202124]">Gemini Tutor</span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2">
           {isCameraOn && (
-            <button onClick={onCapture} disabled={isSending}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
-                         text-[#1a73e8] bg-[#e8f0fe] hover:bg-[#d2e3fc] rounded-full
-                         transition-colors disabled:opacity-50">
-              <Camera size={11} /> Capture & Ask
-            </button>
-          )}
-          {messages.length > 0 && (
-            <span className="text-[10px] text-[#9aa0a6] bg-[#f1f3f4] px-2 py-0.5 rounded-full">{messages.length}</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-blue-600 bg-blue-100/50 rounded-full border border-blue-200/50 uppercase tracking-tight">
+              <Camera size={10} /> Lens Active
+            </div>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto relative custom-scrollbar">
         <ChatMessages
           messages={messages} liveTranscript={liveTranscript} isSending={isSending}
           chatEndRef={chatEndRef} onSuggestion={onSuggestion} onVisualize={onVisualize}
         />
       </div>
 
-      <div className="shrink-0 px-4 pb-4 pt-2 border-t border-[#f1f3f4]">
+      <div className="shrink-0 px-6 pb-6 pt-3 bg-white/30 backdrop-blur-md border-t border-white/40">
         {/* File preview badge */}
         {uploadedFile && (
-          <div className="flex items-center gap-2 mb-2 px-1">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#e8f0fe] rounded-full text-xs text-[#1a73e8] max-w-full">
-              <span>{getFileIcon(uploadedFile.mimeType)}</span>
-              <span className="truncate max-w-[220px] font-medium">{uploadedFile.name}</span>
-              <button onClick={onFileClear} className="ml-1 hover:text-[#c5221f] transition-colors" title="Remover arquivo">
-                <X size={11} />
+          <div className="flex items-center gap-2 mb-3 px-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-2xl text-xs shadow-lg shadow-blue-500/20">
+              <span className="text-base">{getFileIcon(uploadedFile.mimeType)}</span>
+              <span className="truncate max-w-[220px] font-semibold">{uploadedFile.name}</span>
+              <button onClick={onFileClear} className="ml-2 p-1 hover:bg-white/20 rounded-lg transition-colors">
+                <X size={12} />
               </button>
             </div>
           </div>
         )}
 
-        <div className="relative rounded-[24px] bg-[#f1f3f4] border border-transparent
-                        focus-within:bg-white focus-within:border-[#e0e0e0]
-                        focus-within:shadow-[0_2px_10px_rgba(0,0,0,0.12)] transition-all">
+        <div className="relative rounded-[28px] bg-white/80 border border-white shadow-xl shadow-black/5 
+                        focus-within:bg-white focus-within:shadow-2xl focus-within:shadow-blue-500/10 transition-all duration-300 group">
           <textarea ref={textareaRef} value={chatInput}
             onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
-            placeholder={uploadedFile ? `Pergunta sobre ${uploadedFile.name}…` : 'Ask Gemini Tutor…'}
+            placeholder={uploadedFile ? `What should I do with ${uploadedFile.name}?` : 'Ask Gemini Tutor anything...'}
             rows={1} disabled={isSending}
-            className="w-full px-5 pt-4 pb-12 text-sm text-[#202124] bg-transparent resize-none
-                       outline-none placeholder:text-[#9aa0a6] leading-relaxed max-h-[160px]
-                       disabled:opacity-60"
+            className="w-full px-6 pt-5 pb-14 text-sm text-[#1a1c1e] bg-transparent resize-none
+                       outline-none placeholder:text-gray-400 leading-relaxed max-h-[180px]
+                       disabled:opacity-60 font-medium"
           />
-          <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 flex items-center justify-between">
+          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
             <div className="flex items-center gap-1">
-              {/* File upload button */}
               <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
-                title="Enviar arquivo (PDF, imagem, texto)"
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors
-                           ${uploadedFile ? 'text-[#1a73e8] bg-[#e8f0fe]' : 'text-[#5f6368] hover:bg-[#e8eaed]'}`}>
-                <Paperclip size={15} />
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all active:scale-90
+                           ${uploadedFile ? 'text-blue-600 bg-blue-50 border border-blue-100' : 'text-gray-500 hover:bg-gray-100'}`}>
+                <Paperclip size={18} />
               </button>
               {isCameraOn && (
                 <button onClick={onCapture} disabled={isSending}
-                  className="w-8 h-8 rounded-full hover:bg-[#e8eaed] flex items-center justify-center
-                             transition-colors text-[#5f6368]" title="Capture & Ask">
-                  <Camera size={16} />
+                  className="w-10 h-10 rounded-2xl hover:bg-gray-100 flex items-center justify-center
+                             transition-all text-gray-500 active:scale-90" title="Capture Frame">
+                  <Camera size={18} />
                 </button>
               )}
-              <span className="text-[10px] text-[#bdc1c6] hidden lg:inline pl-1">
-                <CornerDownLeft size={9} className="inline mr-0.5" />Enter · Shift+Enter for newline
-              </span>
             </div>
-            <button onClick={onSend} disabled={isSending || (!chatInput.trim() && !uploadedFile)}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-all
-                         bg-[#1a73e8] hover:bg-[#1765cc] text-white shadow-sm
-                         disabled:bg-[#e8eaed] disabled:text-[#bdc1c6] disabled:shadow-none disabled:cursor-not-allowed">
-              <Send size={15} />
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest opacity-0 group-focus-within:opacity-100 transition-opacity mr-2">
+                Press Enter to Send
+              </span>
+              <button onClick={onSend} disabled={isSending || (!chatInput.trim() && !uploadedFile)}
+                className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all
+                           bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30
+                           disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed active:scale-95">
+                <Send size={18} />
+              </button>
+            </div>
           </div>
         </div>
-        <p className="text-center text-[10px] text-[#bdc1c6] mt-1.5">
-          Gemini Tutor · Live Voice · AI Illustrations · Google Search · Google Cloud
-        </p>
+        <div className="mt-4 flex items-center justify-center gap-4 opacity-40">
+           <div className="h-[1px] flex-1 bg-gray-300" />
+           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Enterprise AI Tutor</span>
+           <div className="h-[1px] flex-1 bg-gray-300" />
+        </div>
       </div>
     </>
   );
@@ -1196,10 +1195,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [camExpanded, setCamExpanded] = useState(false);
 
   return (
-    <div className="h-dvh bg-[#f8f9fa] flex flex-col overflow-hidden select-none md:select-auto"
+    <div className="h-dvh bg-[#fdfdff] flex flex-col overflow-hidden relative select-none md:select-auto"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      
+      {/* Dynamic Mesh Background */}
+      <div className="absolute inset-0 pointer-events-none opacity-40 overflow-hidden z-0">
+        <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-blue-200/50 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute top-[40%] -right-[10%] w-[50%] h-[50%] bg-purple-200/50 rounded-full blur-[120px]" style={{ animationDelay: '2s' }} />
+        <div className="absolute -bottom-[10%] left-[20%] w-[40%] h-[40%] bg-indigo-200/40 rounded-full blur-[100px]" />
+      </div>
 
-      {/* Hidden file input — shared between desktop and mobile */}
+      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -1209,39 +1215,34 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="shrink-0 flex items-center justify-between px-4 md:px-6 h-14
-                         bg-white border-b border-[#e8eaed] z-10"
+      <header className="shrink-0 flex items-center justify-between px-4 md:px-8 h-16
+                         bg-white/60 backdrop-blur-xl border-b border-white/40 z-10 shadow-sm shadow-black/5"
         style={{
           paddingLeft: 'max(1rem, env(safe-area-inset-left))',
           paddingRight: 'max(1rem, env(safe-area-inset-right))'
         }}>
         <button onClick={onBack}
-          className="flex items-center gap-2.5 text-[#5f6368] hover:text-[#202124]
-                     transition-colors min-h-[44px] active:opacity-70">
-          <div className="w-8 h-8  flex items-center justify-center">
-            <img src="./logoGT.png" alt="Logo" />
+          className="flex items-center gap-3 text-[#202124] hover:opacity-80 transition-all active:scale-95 group">
+          <div className="w-10 h-10 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center group-hover:shadow-md transition-shadow">
+            <img src="./logoGT.png" alt="Logo" className="w-7 h-7" />
           </div>
-
-          <span className="text-sm font-medium text-[#202124] hidden sm:inline">Gemini Tutor</span>
+          <div className="flex flex-col items-start leading-tight">
+            <span className="text-base font-bold tracking-tight">Gemini Tutor</span>
+            <span className="text-[10px] text-[#5f6368] font-medium uppercase tracking-wider opacity-60">AI Study Engine</span>
+          </div>
         </button>
 
-        <div className="flex items-center gap-2">
-          {isConnected && (
-            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px]
-                             font-medium bg-[#e6f4ea] text-[#137333] border border-[#ceead6]">
-              <Globe size={10} /> Search
-            </span>
-          )}
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border ${isConnected ? 'bg-[#e6f4ea] text-[#137333] border-[#ceead6]'
-            : isConnecting ? 'bg-[#fef7e0] text-[#b06000] border-[#fde58b]'
-              : 'bg-[#f1f3f4] text-[#5f6368] border-[#e8eaed]'
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide border transition-all duration-500 ${isConnected ? 'bg-green-50 text-green-700 border-green-200 shadow-sm shadow-green-200/20'
+            : isConnecting ? 'bg-amber-50 text-amber-700 border-amber-200'
+              : 'bg-gray-100 text-gray-500 border-gray-200'
             }`}>
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isConnected ? 'bg-[#34a853] animate-pulse'
-              : isConnecting ? 'bg-[#fbbc05] animate-pulse'
-                : 'bg-[#9aa0a6]'
+            <span className={`w-2 h-2 rounded-full shrink-0 ${isConnected ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]'
+              : isConnecting ? 'bg-amber-500 animate-pulse'
+                : 'bg-gray-400'
               }`} />
-            {isConnected ? 'Live' : isConnecting ? '…' : 'Off'}
-          </span>
+            {isConnected ? 'LIVE SESSION' : isConnecting ? 'CONNECTING…' : 'DISCONNECTED'}
+          </div>
         </div>
       </header>
 
@@ -1421,44 +1422,42 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           )}
 
           {/* Gemini-style input pill */}
-          <div className="px-3 pt-2 pb-2">
+          <div className="px-4 pt-3 pb-3">
             {/* File preview badge */}
             {uploadedFile && (
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#e8f0fe] rounded-full text-xs text-[#1a73e8] max-w-full">
+              <div className="flex items-center gap-2 mb-3 px-1 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-2xl text-xs shadow-lg shadow-blue-500/20 font-bold">
                   <span>{uploadedFile.mimeType.startsWith('image/') ? '🖼️' : uploadedFile.mimeType === 'application/pdf' ? '📄' : '📝'}</span>
-                  <span className="truncate max-w-[180px] font-medium">{uploadedFile.name}</span>
-                  <button onClick={() => setUploadedFile(null)} className="ml-1 hover:text-[#c5221f] transition-colors">
-                    <X size={11} />
+                  <span className="truncate max-w-[180px]">{uploadedFile.name}</span>
+                  <button onClick={() => setUploadedFile(null)} className="ml-1 p-1 bg-white/20 rounded-lg">
+                    <X size={12} />
                   </button>
                 </div>
               </div>
             )}
-            <div className="flex items-end gap-2 bg-[#f1f3f4] rounded-[26px] px-2 py-2
-                            border border-transparent focus-within:bg-white
-                            focus-within:border-[#e0e0e0] focus-within:shadow-[0_1px_8px_rgba(0,0,0,0.1)]
-                            transition-all">
+            <div className="flex items-end gap-2 bg-white/80 backdrop-blur-md rounded-[28px] px-2.5 py-2.5
+                            border border-white shadow-xl shadow-black/5 focus-within:bg-white
+                            focus-within:shadow-2xl focus-within:shadow-blue-500/10 transition-all">
 
               {/* Camera button — left of input */}
               <button onClick={isCameraOn ? () => { stopCamera(); setCamExpanded(false); } : startCamera}
-                className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center
-                            transition-all active:scale-95 mb-0.5 ${isCameraOn
-                    ? 'bg-[#1a73e8] text-white'
-                    : 'text-[#5f6368] hover:bg-[#e8eaed]'
+                className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
+                            transition-all active:scale-90 mb-0.5 ${isCameraOn
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                    : 'text-gray-500 hover:bg-gray-100'
                   }`}
-                title={isCameraOn ? 'Camera on — tap to turn off' : 'Turn on camera'}>
+                title={isCameraOn ? 'Camera on' : 'Turn on camera'}>
                 {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
               </button>
 
               {/* File upload button */}
               <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
-                title="Enviar arquivo"
-                className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center
-                            transition-all active:scale-95 mb-0.5 ${uploadedFile
-                    ? 'bg-[#e8f0fe] text-[#1a73e8]'
-                    : 'text-[#5f6368] hover:bg-[#e8eaed]'
+                className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
+                            transition-all active:scale-90 mb-0.5 ${uploadedFile
+                    ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                    : 'text-gray-500 hover:bg-gray-100'
                   }`}>
-                <Paperclip size={17} />
+                <Paperclip size={18} />
               </button>
 
               {/* Text area */}
@@ -1466,69 +1465,64 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 ref={textareaRef} value={chatInput}
                 onChange={handleInputChange}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(false); } }}
-                placeholder={uploadedFile ? `Pergunta sobre ${uploadedFile.name}…` : isConnected ? 'Ask or just speak…' : 'Ask Gemini Tutor…'}
+                placeholder={uploadedFile ? `Analyze this...` : isConnected ? 'Speak or type...' : 'Ask me anything...'}
                 rows={1} disabled={isSending}
-                className="flex-1 bg-transparent text-sm text-[#202124] resize-none outline-none
-                           placeholder:text-[#9aa0a6] leading-relaxed py-1.5 max-h-[120px]
-                           disabled:opacity-60 min-h-[36px]"
+                className="flex-1 bg-transparent text-[15px] text-[#1a1c1e] resize-none outline-none
+                           placeholder:text-gray-400 leading-relaxed py-2 max-h-[140px]
+                           disabled:opacity-60 min-h-[40px] font-medium"
               />
 
               {/* Right side — send or mic */}
-              {(chatInput.trim() || uploadedFile) ? (
+              {(chatInput.trim() || uploadedFile) && (
                 <button onClick={() => sendChatMessage(false)} disabled={isSending}
-                  className="shrink-0 w-9 h-9 rounded-full bg-[#1a73e8] hover:bg-[#1765cc]
+                  className="shrink-0 w-10 h-10 rounded-2xl bg-blue-600 hover:bg-blue-700
                              text-white flex items-center justify-center transition-all
-                             active:scale-95 disabled:opacity-50 mb-0.5 shadow-sm">
-                  <Send size={16} />
+                             active:scale-90 disabled:opacity-50 mb-0.5 shadow-lg shadow-blue-500/30">
+                  <Send size={18} />
                 </button>
-              ) : isCameraOn ? (
-                <button onClick={() => { sendChatMessage(true); }}
-                  disabled={isSending}
-                  className="shrink-0 w-9 h-9 rounded-full bg-[#e8f0fe] text-[#1a73e8]
-                             flex items-center justify-center transition-all active:scale-95
-                             disabled:opacity-50 mb-0.5">
-                  <Camera size={17} />
-                </button>
-              ) : (
-                <div className="shrink-0 w-9 h-9 mb-0.5" />
               )}
             </div>
 
             {/* Bottom action row: interrupt | voice FAB | spacer */}
-            <div className="flex items-center justify-between mt-2 px-1">
+            <div className="flex items-center justify-between mt-4 px-2">
               {/* Left: interrupt when speaking */}
               <div className="w-[72px] flex justify-start">
                 {isConnected && isModelSpeaking && (
                   <button onClick={interruptAgent}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium
-                               bg-[#fef7e0] text-[#b06000] border border-[#fde58b] active:scale-95
-                               transition-all animate-pulse min-h-[36px]">
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest
+                               bg-amber-100 text-amber-700 border border-amber-200 active:scale-95
+                               transition-all animate-pulse min-h-[38px] shadow-sm">
                     <StopCircle size={14} /> Stop
                   </button>
                 )}
               </div>
 
-              {/* Centre: big voice FAB */}
+              {/* Centre: big voice FAB with GLOW */}
               <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
-                className={`w-14 h-14 rounded-full flex items-center justify-center
-                            transition-all active:scale-95 shadow-md disabled:opacity-50
-                            disabled:shadow-none ${isConnected
-                    ? 'bg-[#ea4335] text-white'
-                    : 'bg-[#1a73e8] text-white'
+                className={`w-16 h-16 rounded-[24px] flex items-center justify-center
+                            transition-all active:scale-90 shadow-2xl disabled:opacity-50
+                            disabled:shadow-none relative overflow-hidden group ${isConnected
+                    ? 'bg-red-500 text-white'
+                    : 'bg-blue-600 text-white'
                   }`}
                 style={{
                   boxShadow: isConnected
-                    ? '0 4px 16px rgba(234,67,53,0.35)'
-                    : '0 4px 16px rgba(26,115,232,0.35)'
+                    ? '0 10px 25px -5px rgba(239,67,53,0.5)'
+                    : '0 10px 25px -5px rgba(26,115,232,0.5)'
                 }}>
+                {/* Animated Glow when speaking */}
+                {isModelSpeaking && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent animate-pulse" />
+                )}
+                
                 {isConnected
-                  ? <MicOff size={24} />
+                  ? <MicOff size={28} />
                   : isConnecting
-                    ? <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                    ? <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    : <Mic size={24} />
+                    : <Mic size={28} />
                 }
               </button>
 

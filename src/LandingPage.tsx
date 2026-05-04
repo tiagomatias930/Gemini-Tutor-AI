@@ -5,7 +5,7 @@ import { LandingHero } from './components/landing/LandingHero';
 import { LandingFeatures, LandingHowItWorks } from './components/landing/LandingSections';
 import { LandingCaseStudies, LandingAbout, LandingCTA } from './components/landing/LandingFooterSections';
 import { LandingTrust, LandingFAQ } from './components/landing/LandingTrustFAQ';
-import { Theme, darkTheme, lightTheme } from './components/landing/types';
+import { useTheme } from './contexts/ThemeContext';
 
 interface LandingPageProps {
   onStartLearning: () => void;
@@ -14,14 +14,12 @@ interface LandingPageProps {
 export function LandingPage({ onStartLearning }: LandingPageProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeNav, setActiveNav] = useState('home');
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('lp_theme') as Theme) || 'light');
+  const { theme, c, isDark, toggleTheme } = useTheme();
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lp_lang') as Lang) || 'en');
 
-  useEffect(() => { localStorage.setItem('lp_theme', theme); }, [theme]);
   useEffect(() => { localStorage.setItem('lp_lang', lang); }, [lang]);
 
-  const c = theme === 'dark' ? darkTheme : lightTheme;
-  const isDark = theme === 'dark';
+  const setTheme = () => toggleTheme();
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);

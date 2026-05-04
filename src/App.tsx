@@ -244,104 +244,6 @@ function ImageGeneratingSkeleton() {
   );
 }
 
-// ─── Welcome Screen ─────────────────────────────────────────────────────────────
-
-function WelcomeScreen({ onStart }: { onStart: (key: string) => void }) {
-  const [apiKey, setApiKey] = useState(
-    () => localStorage.getItem('gemini_api_key') || process.env.GEMINI_API_KEY || ''
-  );
-  const [error, setError] = useState('');
-
-  const handleStart = () => {
-    const key = apiKey.trim();
-    if (!key) { setError('Please enter your Gemini API key to continue.'); return; }
-    localStorage.setItem('gemini_api_key', key);
-    onStart(key);
-  };
-
-  return (
-    <div className="min-h-dvh bg-white flex flex-col"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
-      }}>
-      {/* Nav */}
-      <nav className="w-full flex items-center justify-end px-4 sm:px-6 py-3 gap-4 text-sm text-slate-500">
-        <a href="https://aistudio.google.com/api-keys" target="_blank"
-          className="hover:text-slate-800 hover:underline transition-colors">Get API Key</a>
-        <a href="https://ai.google.dev/gemini-api/docs/live-api" target="_blank"
-          className="hover:text-slate-800 hover:underline transition-colors">Docs</a>
-      </nav>
-
-      {/* Centre content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8">
-        {/* Logo */}
-        <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
-          <img src="./logoGT.png" alt="Logo" />
-        </div>
-
-        {/* Title — scales from 2.5rem on small mobile to 4rem on desktop */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-800 mb-3 text-center leading-tight">
-          <span className="text-[#4285f4]">G</span><span className="text-[#ea4335]">e</span>
-          <span className="text-[#fbbc05]">m</span><span className="text-[#4285f4]">i</span>
-          <span className="text-[#34a853]">n</span><span className="text-[#ea4335]">i</span>
-          <span className="text-slate-800"> Tutor</span>
-        </h1>
-
-        <p className="text-base sm:text-lg text-slate-500 mb-8 sm:mb-10 text-center max-w-sm sm:max-w-md">
-          Your AI-powered homework assistant — voice, camera and AI-generated visuals.
-        </p>
-
-        {/* API Key input — Google search bar style */}
-        <div className="w-full max-w-xs sm:max-w-xl">
-          <div className={`flex items-center gap-3 px-4 sm:px-5 py-3.5 sm:py-4 rounded-full bg-white border
-                          shadow-sm transition-all hover:shadow-md
-                          focus-within:shadow-[0_2px_12px_rgba(0,0,0,0.18)]
-                          ${error ? 'border-red-300' : 'border-[#dfe1e5]'}`}>
-            <BookOpen size={18} className="text-slate-400 shrink-0" />
-            <input
-              type="password" value={apiKey}
-              onChange={e => { setApiKey(e.target.value); setError(''); }}
-              onKeyDown={e => e.key === 'Enter' && handleStart()}
-              placeholder="Paste your Gemini API Key..."
-              className="flex-1 outline-none text-sm sm:text-base text-slate-700
-                         placeholder:text-slate-400 bg-transparent min-w-0"
-            />
-            <button onClick={handleStart}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1a73e8] hover:bg-[#1765cc] text-white
-                         flex items-center justify-center transition-colors shrink-0 shadow-sm">
-              <ArrowRight size={17} />
-            </button>
-          </div>
-          {error && <p className="text-red-500 text-xs sm:text-sm mt-2 pl-5">{error}</p>}
-        </div>
-
-        {/* Feature pills — wrap gracefully on small screens */}
-        <div className="flex flex-wrap gap-2 sm:gap-3 mt-6 sm:mt-8 justify-center max-w-sm sm:max-w-none">
-          {[
-            { icon: Camera, label: 'Camera Vision' },
-            { icon: Mic, label: 'Voice Chat' },
-            { icon: Palette, label: 'AI Illustrations' },
-            { icon: Globe, label: 'Web Search' },
-            { icon: MessageSquare, label: 'Text Chat' },
-          ].map(({ icon: Icon, label }) => (
-            <span key={label} className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2
-                                         bg-[#f8f9fa] rounded-full text-xs sm:text-sm
-                                         text-[#5f6368] border border-[#e8eaed]">
-              <Icon size={13} />{label}
-            </span>
-          ))}
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="w-full text-center py-3 sm:py-4 text-[10px] sm:text-xs text-[#9aa0a6]
-                         border-t border-[#f1f3f4] px-4">
-        Powered by Google Gemini · Live API · Image Generation · Google Cloud
-      </footer>
-    </div>
-  );
-}
 
 // ─── Mobile camera PiP preview (uses MediaStream directly, separate from desktop ref) ──
 
@@ -1643,15 +1545,11 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 // ─── App Root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [screen, setScreen] = useState<'landing' | 'welcome' | 'tutor'>('landing');
-  const [apiKey, setApiKey] = useState('');
+  const [screen, setScreen] = useState<'landing' | 'tutor'>('landing');
+  const apiKey = process.env.GEMINI_API_KEY || '';
 
   if (screen === 'landing') {
-    return <LandingPage onStartLearning={() => setScreen('welcome')} />;
-  }
-
-  if (screen === 'welcome') {
-    return <WelcomeScreen onStart={k => { setApiKey(k); setScreen('tutor'); }} />;
+    return <LandingPage onStartLearning={() => setScreen('tutor')} />;
   }
 
   return <TutorScreen apiKey={apiKey} onBack={() => setScreen('landing')} />;

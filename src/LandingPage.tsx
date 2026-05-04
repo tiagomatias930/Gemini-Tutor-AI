@@ -93,11 +93,6 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
           <p style={{ color: c.textMuted }} className="text-sm">
             © {new Date().getFullYear()} Gemini Tutor AI. All rights reserved.
           </p>
-          <div className="flex gap-6">
-            {['Twitter', 'GitHub', 'LinkedIn'].map(social => (
-              <a key={social} href="#" className="hover:opacity-80 transition" style={{ color: c.textMuted }}>{social}</a>
-            ))}
-          </div>
         </div>
       </footer>
     </div>

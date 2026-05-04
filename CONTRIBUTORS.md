@@ -3,6 +3,7 @@
 Este projeto foi desenvolvido por:
 
 * **Tiago Matias** - [tiagomatias930](https://github.com/tiagomatias930)
+* **Mauro Silva** - [maurosilvagunza](https://github.com/maurosilvagunza)
 
 ---
 *Se você contribuiu para este projeto, sinta-se à vontade para adicionar seu nome aqui via Pull Request.*

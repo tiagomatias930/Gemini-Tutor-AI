@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, LightMode, DarkMode, Settings, MoreVertical } from '@mui/icons-material';
+import { Globe, Sun, Moon, Settings, MoreVertical } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { motion } from 'framer-motion';
 
@@ -49,14 +49,14 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ isConnected, isConnectin
           className="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
           style={{ color: c.textMuted }}
         >
-          {isDark ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         
         <button 
           className="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
           style={{ color: c.textMuted }}
         >
-          <Settings fontSize="small" />
+          <Settings size={18} />
         </button>
       </div>
     </header>

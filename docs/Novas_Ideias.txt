@@ -62,3 +62,11 @@ Consolidar a experiencia multimodal completa, integrando texto, voz, imagem, vid
 
 Direcao Estrategica
 Esta atualizacao deve ser tratada como um marco de evolucao do Gemini Tutor. O foco nao e apenas adicionar funcoes, mas construir uma plataforma de ensino mais humana, inclusiva, inteligente e preparada para diferentes realidades de aprendizagem.
+
+Com o poder da visão computacional, o gemini deve ser capaz de entrar em funcionamento segundo o que ela vê, step of operation Gemini tutor vision:
+
+Para casos especificos de pessoas portadoras de deficiencia:
+
+1-Pessoas cegas: para Pessoas segas o Gemini Tutor , vai operar via comando de voz, para esse modo ser ativo, o usuario deve pronuncinar ativar modo 'ligth in dark'
+2-Pessoas surdo: com o poder da visão computacional, o gemini deve ser capaz de ativar o modo 'guide trustful' modo guia fiel', com gesto que expressa ajuda; este modo vai deixar o avatar funcional , ensinando e conversando por meio de linguages gestual;
+3-Pessoas Mudo: com o poder da visão computacional, o gemini deve ser capaz de ativar o modo 'guide trustful' modo guia fiel', com gesto que expressa ajuda; este modo vai deixar o avatar funcional , ensinando e conversando por meio de linguages gestual;

@@ -24,7 +24,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       className={`flex gap-3 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       {!isUser && (
-        <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center overflow-hidden">
           <img src="./logoGT.png" alt="AI" className="w-6 h-6 object-contain" />
         </div>
       )}

@@ -78,7 +78,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = (props) => {
                       animate={{ opacity: 1, y: 0 }}
                       className="flex flex-col items-center justify-center py-20 text-center space-y-6"
                     >
-                      <div className="w-20 h-20 rounded-3xl bg-blue-500/10 flex items-center justify-center">
+                      <div className="w-20 h-20 flex items-center justify-center">
                         <img src="./logoGT.png" alt="Logo" className="w-12 h-12" />
                       </div>
                       <div className="space-y-2">

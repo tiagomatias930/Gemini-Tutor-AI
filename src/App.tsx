@@ -4,8 +4,11 @@ import {
   Mic, MicOff, Sparkles, Camera, CameraOff,
   BookOpen, ArrowRight, Volume2, MessageSquare,
   StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn, Paperclip, FileText,
+  Moon, Sun, Languages
 } from 'lucide-react';
 import { LandingPage } from './LandingPage';
+import { useTheme } from './contexts/ThemeContext';
+import { t, type Lang } from './i18n';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -136,7 +139,7 @@ function renderInline(text: string): React.ReactNode[] {
   });
 }
 
-function MarkdownContent({ text, isUser }: { text: string; isUser: boolean }) {
+function MarkdownContent({ text, isUser, isDark }: { text: string; isUser: boolean; isDark: boolean }) {
   const lines = text.split('\n');
   const nodes: React.ReactNode[] = [];
   let i = 0;
@@ -149,13 +152,14 @@ function MarkdownContent({ text, isUser }: { text: string; isUser: boolean }) {
       nodes.push(<pre key={`cb-${i}`} className="bg-[#1e1e2e] text-[#cdd6f4] rounded-xl p-4 my-2 overflow-x-auto text-xs font-mono leading-relaxed border border-[#313244]"><code>{codeLines.join('\n')}</code></pre>);
       i++; continue;
     }
-    if (line.startsWith('### ')) { nodes.push(<h3 key={i} className="text-sm font-semibold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(4))}</h3>); i++; continue; }
-    if (line.startsWith('## ')) { nodes.push(<h2 key={i} className="text-base font-bold mt-3 mb-1 text-[#202124]">{renderInline(line.slice(3))}</h2>); i++; continue; }
-    if (line.startsWith('# ')) { nodes.push(<h1 key={i} className="text-lg font-bold mt-4 mb-2 text-[#202124]">{renderInline(line.slice(2))}</h1>); i++; continue; }
+    const headingClass = isDark ? 'text-white' : 'text-[#202124]';
+    if (line.startsWith('### ')) { nodes.push(<h3 key={i} className={`text-sm font-semibold mt-3 mb-1 ${headingClass}`}>{renderInline(line.slice(4))}</h3>); i++; continue; }
+    if (line.startsWith('## ')) { nodes.push(<h2 key={i} className={`text-base font-bold mt-3 mb-1 ${headingClass}`}>{renderInline(line.slice(3))}</h2>); i++; continue; }
+    if (line.startsWith('# ')) { nodes.push(<h1 key={i} className={`text-lg font-bold mt-4 mb-2 ${headingClass}`}>{renderInline(line.slice(2))}</h1>); i++; continue; }
     if (line.match(/^[-*•]\s/)) {
       const items: React.ReactNode[] = [];
       while (i < lines.length && lines[i].match(/^[-*•]\s/)) {
-        items.push(<li key={i} className="flex gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#5f6368] shrink-0" /><span>{renderInline(lines[i].replace(/^[-*•]\s/, ''))}</span></li>);
+        items.push(<li key={i} className="flex gap-2"><span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${isDark ? 'bg-gray-400' : 'bg-[#5f6368]'}`} /><span>{renderInline(lines[i].replace(/^[-*•]\s/, ''))}</span></li>);
         i++;
       }
       nodes.push(<ul key={`ul-${i}`} className="space-y-1 my-2">{items}</ul>); continue;
@@ -164,14 +168,14 @@ function MarkdownContent({ text, isUser }: { text: string; isUser: boolean }) {
       const items: React.ReactNode[] = [];
       let n = 1;
       while (i < lines.length && lines[i].match(/^\d+\.\s/)) {
-        items.push(<li key={i} className="flex gap-2"><span className="shrink-0 text-[#5f6368] font-medium w-5 text-right">{n}.</span><span>{renderInline(lines[i].replace(/^\d+\.\s/, ''))}</span></li>);
+        items.push(<li key={i} className="flex gap-2"><span className={`shrink-0 font-medium w-5 text-right ${isDark ? 'text-gray-400' : 'text-[#5f6368]'}`}>{n}.</span><span>{renderInline(lines[i].replace(/^\d+\.\s/, ''))}</span></li>);
         i++; n++;
       }
       nodes.push(<ol key={`ol-${i}`} className="space-y-1 my-2">{items}</ol>); continue;
     }
-    if (line.match(/^---+$/)) { nodes.push(<hr key={i} className="my-3 border-[#e8eaed]" />); i++; continue; }
+    if (line.match(/^---+$/)) { nodes.push(<hr key={i} className={`my-3 ${isDark ? 'border-white/10' : 'border-[#e8eaed]'}`} />); i++; continue; }
     if (line.trim() === '') { if (nodes.length > 0) nodes.push(<div key={`sp-${i}`} className="h-1.5" />); i++; continue; }
-    nodes.push(<p key={i} className={`leading-relaxed ${isUser ? '' : 'text-[#3c4043]'}`}>{renderInline(line)}</p>);
+    nodes.push(<p key={i} className={`leading-relaxed ${isUser ? '' : isDark ? 'text-gray-200' : 'text-[#3c4043]'}`}>{renderInline(line)}</p>);
     i++;
   }
   return <div className="space-y-px">{nodes}</div>;
@@ -182,17 +186,17 @@ function MarkdownContent({ text, isUser }: { text: string; isUser: boolean }) {
 
 function GeneratedImageCard({
   imageBase64, mimeType, caption,
-  onRegenerate, isRegenerating,
+  onRegenerate, isRegenerating, isDark
 }: {
   imageBase64: string; mimeType: string; caption?: string;
-  onRegenerate?: () => void; isRegenerating?: boolean;
+  onRegenerate?: () => void; isRegenerating?: boolean; isDark: boolean;
 }) {
   const [lightbox, setLightbox] = useState(false);
   const src = `data:${mimeType};base64,${imageBase64}`;
 
   return (
     <>
-      <div className="mt-3 rounded-xl overflow-hidden border border-[#e8eaed] bg-[#f8f9fa]">
+      <div className={`mt-3 rounded-xl overflow-hidden border transition-colors ${isDark ? 'border-white/10 bg-white/5' : 'border-[#e8eaed] bg-[#f8f9fa]'}`}>
         <div className="relative group cursor-zoom-in" onClick={() => setLightbox(true)}>
           <img src={src} alt="AI-generated illustration" className="w-full object-contain max-h-72" />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -203,16 +207,10 @@ function GeneratedImageCard({
           <div>
             <div className="flex items-center gap-1.5 mb-0.5">
               <Palette size={11} className="text-[#9b72cb]" />
-              <span className="text-[10px] font-medium text-[#9b72cb]">AI Generated Illustration</span>
+              <span className="text-[10px] font-bold text-[#9b72cb] uppercase tracking-tight">AI Illustration</span>
             </div>
-            {caption && <p className="text-[11px] text-[#5f6368] leading-relaxed">{caption}</p>}
+            {caption && <p className={`text-[11px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-[#5f6368]'}`}>{caption}</p>}
           </div>
-          {onRegenerate && (
-            <button onClick={onRegenerate} disabled={isRegenerating}
-              className="shrink-0 text-[10px] text-[#1a73e8] hover:underline disabled:opacity-40 disabled:no-underline mt-0.5">
-              {isRegenerating ? 'Generating…' : 'Regenerate'}
-            </button>
-          )}
         </div>
       </div>
 
@@ -232,13 +230,13 @@ function GeneratedImageCard({
 
 // ─── Image generating skeleton ────────────────────────────────────────────────
 
-function ImageGeneratingSkeleton() {
+function ImageGeneratingSkeleton({ isDark }: { isDark: boolean }) {
   return (
-    <div className="mt-3 rounded-xl border border-[#e8eaed] bg-[#f8f9fa] overflow-hidden">
-      <div className="h-40 bg-gradient-to-r from-[#f1f3f4] via-[#e8eaed] to-[#f1f3f4] animate-pulse" />
+    <div className={`mt-3 rounded-xl border overflow-hidden ${isDark ? 'border-white/10 bg-white/5' : 'border-[#e8eaed] bg-[#f8f9fa]'}`}>
+      <div className={`h-40 animate-pulse ${isDark ? 'bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800' : 'bg-gradient-to-r from-[#f1f3f4] via-[#e8eaed] to-[#f1f3f4]'}`} />
       <div className="px-3 py-2 flex items-center gap-2">
         <Palette size={11} className="text-[#9b72cb]" />
-        <span className="text-[10px] text-[#9aa0a6]">Generating illustration with Gemini…</span>
+        <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-[#9aa0a6]'}`}>Generating illustration with Gemini…</span>
       </div>
     </div>
   );
@@ -261,7 +259,7 @@ function MobileCamPreview({ stream }: { stream: MediaStream | null }) {
 
 function ChatMessages({
   messages, liveTranscript, isSending, chatEndRef, onSuggestion, onVisualize,
-  extraTopPad = false,
+  extraTopPad = false, isDark, lang
 }: {
   messages: ChatMessage[];
   liveTranscript: string;
@@ -270,28 +268,32 @@ function ChatMessages({
   onSuggestion: (s: string) => void;
   onVisualize: (q: string, i: number) => void;
   extraTopPad?: boolean;
+  isDark: boolean;
+  lang: Lang;
 }) {
   return (
     <div className={`px-3 sm:px-4 py-6 space-y-6 ${extraTopPad ? 'pt-[140px]' : ''}`}>
       {messages.length === 0 && !liveTranscript && (
         <div className="flex flex-col items-center justify-center gap-6 pt-16 pb-8 px-4">
-          <div className="w-20 h-20 rounded-3xl bg-white/40 backdrop-blur-xl border border-white/40 flex items-center justify-center mb-2 shadow-2xl shadow-blue-500/10">
+          <div className={`w-20 h-20 rounded-3xl backdrop-blur-xl border flex items-center justify-center mb-2 shadow-2xl ${isDark ? 'bg-white/5 border-white/20 shadow-blue-500/5' : 'bg-white/40 border-white/40 shadow-blue-500/10'}`}>
             <img src="./logoGT.png" alt="Logo" className="w-12 h-12" />
           </div>
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-[#1a1c1e] tracking-tight">How can I help you study?</h2>
-            <p className="text-sm text-[#5f6368] max-w-[260px] mx-auto">Ask anything — visual topics get an AI illustration automatically.</p>
+            <h2 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#1a1c1e]'}`}>{t(lang, 'chatHowCanHelp')}</h2>
+            <p className={`text-sm max-w-[260px] mx-auto ${isDark ? 'text-gray-400' : 'text-[#5f6368]'}`}>{t(lang, 'chatAskAnything')}</p>
           </div>
           <div className="flex flex-col gap-3 w-full max-w-[320px] mt-4">
             {[
-              { text: 'Explain how photosynthesis works', icon: <Palette size={14} /> },
-              { text: 'Describe the Krebs cycle', icon: <Palette size={14} /> },
-              { text: 'How does DNA replication work?', icon: <Palette size={14} /> },
+              { text: t(lang, 'chatSuggestion1'), icon: <Palette size={14} /> },
+              { text: t(lang, 'chatSuggestion2'), icon: <Palette size={14} /> },
+              { text: t(lang, 'chatSuggestion3'), icon: <Palette size={14} /> },
             ].map(s => (
               <button key={s.text} onClick={() => onSuggestion(s.text)}
-                className="text-left px-5 py-4 rounded-2xl border border-white/60 bg-white/30 backdrop-blur-md 
-                           text-sm text-[#3c4043] hover:bg-white/60 hover:scale-[1.02] active:scale-[0.98]
-                           transition-all flex items-center gap-3 shadow-sm shadow-black/5">
+                className={`text-left px-5 py-4 rounded-2xl border backdrop-blur-md 
+                           text-sm hover:scale-[1.02] active:scale-[0.98]
+                           transition-all flex items-center gap-3 shadow-sm ${isDark 
+                             ? 'border-white/10 bg-white/5 text-gray-200 hover:bg-white/10' 
+                             : 'border-white/60 bg-white/30 text-[#3c4043] hover:bg-white/60 shadow-black/5'}`}>
                 <span className="p-1.5 rounded-lg bg-purple-500/10 text-[#9b72cb]">{s.icon}</span>
                 {s.text}
               </button>
@@ -303,58 +305,53 @@ function ChatMessages({
       {messages.map((msg, i) => (
         <div key={i} className={`flex gap-3 sm:gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
           {msg.role === 'assistant' && (
-            <div className="w-9 h-9 rounded-xl bg-white shadow-md flex items-center justify-center shrink-0 border border-gray-100 mt-1">
+            <div className={`w-9 h-9 rounded-xl shadow-md flex items-center justify-center shrink-0 border mt-1 ${isDark ? 'bg-white/10 border-white/10' : 'bg-white border-gray-100'}`}>
               <img src="./logoGT.png" alt="Logo" className="w-6 h-6" />
             </div>
           )}
           <div className={`max-w-[88%] sm:max-w-[80%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             <div className={`px-4 sm:px-5 py-3 sm:py-4 text-sm leading-relaxed shadow-sm transition-all duration-300 ${msg.role === 'user'
               ? 'bg-[#1a73e8] text-white rounded-2xl rounded-tr-none shadow-blue-500/20'
-              : 'bg-white/70 backdrop-blur-lg text-[#1f1f1f] rounded-2xl rounded-tl-none border border-white/60'
+              : `backdrop-blur-lg rounded-2xl rounded-tl-none border ${isDark ? 'bg-white/10 border-white/10 text-white' : 'bg-white/70 border-white/60 text-[#1f1f1f]'}`
               }`}>
               {msg.image && <div className="rounded-xl overflow-hidden mb-3 border border-white/20 shadow-lg"><img src={msg.image} alt="Captured" className="max-h-48 w-auto object-contain" /></div>}
               {msg.attachedFile && (
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 text-xs font-medium w-fit max-w-full ${msg.role === 'user' ? 'bg-white/15' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 text-xs font-medium w-fit max-w-full ${msg.role === 'user' ? 'bg-white/15' : isDark ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
                   <FileText size={14} className="shrink-0" />
                   <span className="truncate max-w-[200px]">{msg.attachedFile.name}</span>
                 </div>
               )}
-              <div className="prose prose-sm max-w-none">
-                <MarkdownContent text={msg.text} isUser={msg.role === 'user'} />
+              <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
+                <MarkdownContent text={msg.text} isUser={msg.role === 'user'} isDark={isDark} />
               </div>
-              {msg.role === 'assistant' && msg.isGeneratingImage && <ImageGeneratingSkeleton />}
+              {msg.role === 'assistant' && msg.isGeneratingImage && <ImageGeneratingSkeleton isDark={isDark} />}
               {msg.role === 'assistant' && msg.generatedImage && !msg.isGeneratingImage && (
                 <GeneratedImageCard
                   imageBase64={msg.generatedImage}
                   mimeType={msg.generatedImageMime || 'image/png'}
                   caption={msg.imageCaption}
-                  onRegenerate={() => {
-                    const q = messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text;
-                    onVisualize(q, i);
-                  }}
-                  isRegenerating={false}
+                  isDark={isDark}
                 />
               )}
             </div>
             <div className={`flex items-center gap-2 mt-2 px-1 flex-wrap ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
               {msg.source === 'voice' && (
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#9aa0a6] flex items-center gap-1 bg-gray-100/50 px-2 py-0.5 rounded"><Mic size={10} /> Voice</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 px-2 py-0.5 rounded ${isDark ? 'text-gray-400 bg-white/5' : 'text-[#9aa0a6] bg-gray-100/50'}`}><Mic size={10} /> {t(lang, 'chatVoiceMode')}</span>
               )}
               {msg.grounded && (
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1e8e3e] flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded">
-                  <Globe size={10} /> Search
+                <span className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 px-2 py-0.5 rounded ${isDark ? 'text-green-400 bg-green-500/10' : 'text-[#1e8e3e] bg-green-50'}`}>
+                  <Globe size={10} /> {t(lang, 'chatSearchMode')}
                 </span>
               )}
-              {msg.role === 'assistant' && !msg.generatedImage && !msg.isGeneratingImage && (
+              {msg.role === 'assistant' && !msg.generatedImage && !msg.isGeneratingImage && onVisualize && (
                 <button
                   onClick={() => {
                     const q = messages.slice(0, i).reverse().find(m => m.role === 'user')?.text || msg.text;
                     onVisualize(q, i);
                   }}
-                  className="text-[10px] font-bold uppercase tracking-wider text-[#9b72cb] flex items-center gap-1
-                             hover:bg-purple-50 active:scale-95 px-2 py-0.5 rounded-lg
-                             transition-all bg-purple-50/50 border border-purple-100/50">
-                  <Palette size={10} /> Visualize
+                  className={`text-[10px] font-bold uppercase tracking-wider text-[#9b72cb] flex items-center gap-1
+                             hover:scale-95 px-2 py-0.5 rounded-lg transition-all border ${isDark ? 'bg-purple-500/10 border-purple-500/20' : 'bg-purple-50/50 border-purple-100/50 hover:bg-purple-50'}`}>
+                  <Palette size={10} /> {t(lang, 'chatVisualize')}
                 </button>
               )}
             </div>
@@ -363,27 +360,26 @@ function ChatMessages({
       ))}
 
       {liveTranscript && (
-        <div className="flex gap-2 sm:gap-2.5 flex-row">
-          <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
-          <img src="./logoGT.png" alt="Logo" />
-        </div>
-          <div className="max-w-[88%] sm:max-w-[82%] px-3.5 sm:px-4 py-2.5 bg-[#f8f9fa] border
-                          border-[#e8eaed] rounded-2xl rounded-tl-sm text-sm text-[#5f6368] italic">
+        <div className="flex gap-3 sm:gap-4 flex-row">
+          <div className={`w-9 h-9 rounded-xl shadow-md flex items-center justify-center shrink-0 border mt-1 ${isDark ? 'bg-white/10 border-white/10' : 'bg-white border-gray-100'}`}>
+            <img src="./logoGT.png" alt="Logo" className="w-6 h-6" />
+          </div>
+          <div className={`max-w-[88%] sm:max-w-[80%] px-4 sm:px-5 py-2.5 backdrop-blur-lg rounded-2xl rounded-tl-sm border text-sm italic ${isDark ? 'bg-white/10 border-white/10 text-gray-300' : 'bg-white/70 border-white/60 text-[#5f6368]'}`}>
             {liveTranscript}
-            <span className="inline-block w-1 h-3.5 bg-[#4285f4] ml-0.5 animate-pulse rounded-sm" />
+            <span className="inline-block w-1 h-3.5 bg-blue-500 ml-1 animate-pulse rounded-sm" />
           </div>
         </div>
       )}
 
       {isSending && !liveTranscript && (
-        <div className="flex gap-2 sm:gap-2.5">
-          <div className="w-14 h-14 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center mb-2 sm:mb-2">
-          <img src="./logoGT.png" alt="Logo" />
-        </div>
-          <div className="bg-[#f8f9fa] border border-[#e8eaed] rounded-2xl rounded-tl-sm px-4 py-3.5">
+        <div className="flex gap-3 sm:gap-4">
+          <div className={`w-9 h-9 rounded-xl shadow-md flex items-center justify-center shrink-0 border mt-1 ${isDark ? 'bg-white/10 border-white/10' : 'bg-white border-gray-100'}`}>
+            <img src="./logoGT.png" alt="Logo" className="w-6 h-6" />
+          </div>
+          <div className={`backdrop-blur-lg border rounded-2xl rounded-tl-sm px-5 py-4 ${isDark ? 'bg-white/10 border-white/10' : 'bg-white/70 border-white/60'}`}>
             <div className="flex gap-1.5 items-center">
               {[0, 160, 320].map(d => (
-                <span key={d} className="w-2 h-2 bg-[#bdc1c6] rounded-full animate-bounce"
+                <span key={d} className={`w-2 h-2 rounded-full animate-bounce ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`}
                   style={{ animationDelay: `${d}ms` }} />
               ))}
             </div>
@@ -400,7 +396,7 @@ function ChatMessages({
 function DesktopChatContent({
   messages, liveTranscript, isSending, isCameraOn, chatInput, textareaRef, chatEndRef,
   onInputChange, onSend, onCapture, onSuggestion, onVisualize, generateVisual,
-  uploadedFile, fileInputRef, onFileSelect, onFileClear,
+  uploadedFile, fileInputRef, onFileSelect, onFileClear, isDark, lang
 }: {
   messages: ChatMessage[]; liveTranscript: string; isSending: boolean;
   isCameraOn: boolean; chatInput: string;
@@ -414,6 +410,8 @@ function DesktopChatContent({
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFileClear: () => void;
+  isDark: boolean;
+  lang: Lang;
 }) {
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) return '🖼️';
@@ -423,15 +421,15 @@ function DesktopChatContent({
 
   return (
     <>
-      <div className="shrink-0 px-6 py-4 border-b border-white/40 flex items-center justify-between bg-white/20 backdrop-blur-sm">
+      <div className={`shrink-0 px-6 py-4 border-b flex items-center justify-between transition-all duration-500 ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/20 border-white/40 backdrop-blur-sm'}`}>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-          <span className="text-xs font-bold text-[#1a1c1e] uppercase tracking-widest opacity-80">Conversation Context</span>
+          <span className={`text-xs font-bold uppercase tracking-widest opacity-80 ${isDark ? 'text-gray-400' : 'text-[#1a1c1e]'}`}>Conversation Context</span>
         </div>
         <div className="flex items-center gap-2">
           {isCameraOn && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-blue-600 bg-blue-100/50 rounded-full border border-blue-200/50 uppercase tracking-tight">
-              <Camera size={10} /> Lens Active
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full border uppercase tracking-tight ${isDark ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' : 'text-blue-600 bg-blue-100/50 border-blue-200/50'}`}>
+              <Camera size={10} /> {t(lang, 'chatLensActive')}
             </div>
           )}
         </div>
@@ -441,10 +439,11 @@ function DesktopChatContent({
         <ChatMessages
           messages={messages} liveTranscript={liveTranscript} isSending={isSending}
           chatEndRef={chatEndRef} onSuggestion={onSuggestion} onVisualize={onVisualize}
+          isDark={isDark} lang={lang}
         />
       </div>
 
-      <div className="shrink-0 px-6 pb-6 pt-3 bg-white/30 backdrop-blur-md border-t border-white/40">
+      <div className={`shrink-0 px-6 pb-6 pt-3 border-t transition-all duration-500 ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/30 backdrop-blur-md border-white/40'}`}>
         {/* File preview badge */}
         {uploadedFile && (
           <div className="flex items-center gap-2 mb-3 px-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -458,16 +457,15 @@ function DesktopChatContent({
           </div>
         )}
 
-        <div className="relative rounded-[28px] bg-white/80 border border-white shadow-xl shadow-black/5 
-                        focus-within:bg-white focus-within:shadow-2xl focus-within:shadow-blue-500/10 transition-all duration-300 group">
+        <div className={`relative rounded-[28px] border shadow-xl transition-all duration-300 group ${isDark ? 'bg-white/5 border-white/10 shadow-black/20 focus-within:bg-white/10' : 'bg-white/80 border-white shadow-black/5 focus-within:bg-white focus-within:shadow-2xl focus-within:shadow-blue-500/10'}`}>
           <textarea ref={textareaRef} value={chatInput}
             onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
-            placeholder={uploadedFile ? `What should I do with ${uploadedFile.name}?` : 'Ask Gemini Tutor anything...'}
+            placeholder={uploadedFile ? t(lang, 'chatFilePlaceholder').replace('{fileName}', uploadedFile.name) : t(lang, 'chatInputPlaceholder')}
             rows={1} disabled={isSending}
-            className="w-full px-6 pt-5 pb-14 text-sm text-[#1a1c1e] bg-transparent resize-none
+            className={`w-full px-6 pt-5 pb-14 text-sm bg-transparent resize-none
                        outline-none placeholder:text-gray-400 leading-relaxed max-h-[180px]
-                       disabled:opacity-60 font-medium"
+                       disabled:opacity-60 font-medium ${isDark ? 'text-white' : 'text-[#1a1c1e]'}`}
           />
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
             <div className="flex items-center gap-1">
@@ -486,8 +484,8 @@ function DesktopChatContent({
             </div>
             
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest opacity-0 group-focus-within:opacity-100 transition-opacity mr-2">
-                Press Enter to Send
+              <span className={`text-[10px] font-bold uppercase tracking-widest opacity-0 group-focus-within:opacity-100 transition-opacity mr-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                {t(lang, 'chatPressEnter')}
               </span>
               <button onClick={onSend} disabled={isSending || (!chatInput.trim() && !uploadedFile)}
                 className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all
@@ -499,9 +497,9 @@ function DesktopChatContent({
           </div>
         </div>
         <div className="mt-4 flex items-center justify-center gap-4 opacity-40">
-           <div className="h-[1px] flex-1 bg-gray-300" />
-           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">Enterprise AI Tutor</span>
-           <div className="h-[1px] flex-1 bg-gray-300" />
+           <div className={`h-[1px] flex-1 ${isDark ? 'bg-white/10' : 'bg-gray-300'}`} />
+           <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t(lang, 'chatEnterprise')}</span>
+           <div className={`h-[1px] flex-1 ${isDark ? 'bg-white/10' : 'bg-gray-300'}`} />
         </div>
       </div>
     </>
@@ -512,19 +510,22 @@ function DesktopChatContent({
 
 function MobileChatMessages({
   messages, liveTranscript, isSending, chatEndRef, onSuggestion, onVisualize, isCameraOn,
+  isDark, lang
 }: {
   messages: ChatMessage[]; liveTranscript: string; isSending: boolean;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
   onSuggestion: (s: string) => void;
   onVisualize: (q: string, i: number) => void;
   isCameraOn: boolean;
+  isDark: boolean;
+  lang: Lang;
 }) {
   // When camera PiP is visible, add top padding so messages don't hide under it
   return (
     <ChatMessages
       messages={messages} liveTranscript={liveTranscript} isSending={isSending}
       chatEndRef={chatEndRef} onSuggestion={onSuggestion} onVisualize={onVisualize}
-      extraTopPad={isCameraOn}
+      extraTopPad={isCameraOn} isDark={isDark} lang={lang}
     />
   );
 }
@@ -532,6 +533,13 @@ function MobileChatMessages({
 // ─── Tutor Screen ─────────────────────────────────────────────────────────────
 
 function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void }) {
+  const { theme, c, isDark, toggleTheme } = useTheme();
+  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lp_lang') as Lang) || 'en');
+
+  useEffect(() => {
+    localStorage.setItem('lp_lang', lang);
+  }, [lang]);
+
   // ── UI state ──────────────────────────────────────────────────────────────
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -1195,14 +1203,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [camExpanded, setCamExpanded] = useState(false);
 
   return (
-    <div className="h-dvh bg-[#fdfdff] flex flex-col overflow-hidden relative select-none md:select-auto"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className={`h-dvh flex flex-col overflow-hidden relative select-none md:select-auto transition-colors duration-500`}
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        backgroundColor: isDark ? '#0a0b10' : '#fdfdff'
+      }}>
       
       {/* Dynamic Mesh Background */}
       <div className="absolute inset-0 pointer-events-none opacity-40 overflow-hidden z-0">
-        <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-blue-200/50 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute top-[40%] -right-[10%] w-[50%] h-[50%] bg-purple-200/50 rounded-full blur-[120px]" style={{ animationDelay: '2s' }} />
-        <div className="absolute -bottom-[10%] left-[20%] w-[40%] h-[40%] bg-indigo-200/40 rounded-full blur-[100px]" />
+        <div className={`absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full blur-[120px] animate-pulse ${isDark ? 'bg-blue-900/20' : 'bg-blue-200/50'}`} />
+        <div className={`absolute top-[40%] -right-[10%] w-[50%] h-[50%] rounded-full blur-[120px] ${isDark ? 'bg-purple-900/20' : 'bg-purple-200/50'}`} style={{ animationDelay: '2s' }} />
+        <div className={`absolute -bottom-[10%] left-[20%] w-[40%] h-[40%] rounded-full blur-[100px] ${isDark ? 'bg-indigo-900/20' : 'bg-indigo-200/40'}`} />
       </div>
 
       {/* Hidden file input */}
@@ -1215,33 +1226,43 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="shrink-0 flex items-center justify-between px-4 md:px-8 h-16
-                         bg-white/60 backdrop-blur-xl border-b border-white/40 z-10 shadow-sm shadow-black/5"
+      <header className={`shrink-0 flex items-center justify-between px-4 md:px-8 h-16 backdrop-blur-xl border-b z-10 shadow-sm shadow-black/5 transition-all duration-500 ${isDark ? 'bg-black/40 border-white/10' : 'bg-white/60 border-white/40'}`}
         style={{
           paddingLeft: 'max(1rem, env(safe-area-inset-left))',
           paddingRight: 'max(1rem, env(safe-area-inset-right))'
         }}>
         <button onClick={onBack}
-          className="flex items-center gap-3 text-[#202124] hover:opacity-80 transition-all active:scale-95 group">
-          <div className="w-10 h-10 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center group-hover:shadow-md transition-shadow">
+          className={`flex items-center gap-3 hover:opacity-80 transition-all active:scale-95 group ${isDark ? 'text-white' : 'text-[#202124]'}`}>
+          <div className={`w-10 h-10 rounded-2xl shadow-sm border flex items-center justify-center group-hover:shadow-md transition-shadow ${isDark ? 'bg-white/10 border-white/20' : 'bg-white border-gray-100'}`}>
             <img src="./logoGT.png" alt="Logo" className="w-7 h-7" />
           </div>
           <div className="flex flex-col items-start leading-tight">
-            <span className="text-base font-bold tracking-tight">Gemini Tutor</span>
-            <span className="text-[10px] text-[#5f6368] font-medium uppercase tracking-wider opacity-60">AI Study Engine</span>
+            <span className="text-base font-bold tracking-tight">{t(lang, 'chatTutor')}</span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider opacity-60 ${isDark ? 'text-gray-300' : 'text-[#5f6368]'}`}>{t(lang, 'chatStudyEngine')}</span>
           </div>
         </button>
 
         <div className="flex items-center gap-3">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide border transition-all duration-500 ${isConnected ? 'bg-green-50 text-green-700 border-green-200 shadow-sm shadow-green-200/20'
-            : isConnecting ? 'bg-amber-50 text-amber-700 border-amber-200'
-              : 'bg-gray-100 text-gray-500 border-gray-200'
+          {/* Theme Toggle */}
+          <button onClick={toggleTheme} className={`p-2 rounded-xl border transition-all active:scale-90 ${isDark ? 'bg-white/5 border-white/10 text-amber-400' : 'bg-white border-gray-200 text-gray-500'}`}>
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          {/* Language Toggle */}
+          <button onClick={() => setLang(prev => prev === 'en' ? 'pt' : 'en')} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+            <Languages size={14} />
+            {lang.toUpperCase()}
+          </button>
+
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide border transition-all duration-500 ${isConnected ? 'bg-green-500/10 text-green-500 border-green-500/30'
+            : isConnecting ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+              : isDark ? 'bg-white/5 text-gray-400 border-white/10' : 'bg-gray-100 text-gray-500 border-gray-200'
             }`}>
             <span className={`w-2 h-2 rounded-full shrink-0 ${isConnected ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]'
               : isConnecting ? 'bg-amber-500 animate-pulse'
                 : 'bg-gray-400'
               }`} />
-            {isConnected ? 'LIVE SESSION' : isConnecting ? 'CONNECTING…' : 'DISCONNECTED'}
+            <span className="hidden sm:inline">{isConnected ? t(lang, 'chatLiveSession') : isConnecting ? t(lang, 'chatConnecting') : t(lang, 'chatDisconnected')}</span>
           </div>
         </div>
       </header>
@@ -1318,7 +1339,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         </div>
 
         {/* Desktop right — chat */}
-        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-[#e8eaed] overflow-hidden">
+        <div className="flex-1 flex flex-col bg-white/40 backdrop-blur-md rounded-2xl shadow-sm border z-10 overflow-hidden transition-all duration-500" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(232, 234, 237, 1)' }}>
           <DesktopChatContent
             messages={messages} liveTranscript={liveTranscript} isSending={isSending}
             isCameraOn={isCameraOn} chatInput={chatInput} textareaRef={textareaRef}
@@ -1333,6 +1354,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             fileInputRef={fileInputRef}
             onFileSelect={handleFileSelect}
             onFileClear={() => setUploadedFile(null)}
+            isDark={isDark} lang={lang}
           />
         </div>
       </div>
@@ -1396,11 +1418,12 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             onSuggestion={(s) => { setChatInput(s); textareaRef.current?.focus(); }}
             onVisualize={(q, i) => generateVisual(q, i)}
             isCameraOn={isCameraOn}
+            isDark={isDark} lang={lang}
           />
         </div>
 
         {/* ── Mobile input bar ─────────────────────────────────────────────── */}
-        <div className="shrink-0 bg-white border-t border-[#e8eaed]"
+        <div className={`shrink-0 border-t transition-all duration-500 ${isDark ? 'bg-black/60 border-white/10' : 'bg-white border-[#e8eaed]'}`}
           style={{
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             paddingLeft: 'env(safe-area-inset-left, 0px)',
@@ -1410,12 +1433,13 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           {/* Status pill */}
           {isConnected && (
             <div className="flex justify-center pt-1.5">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium ${isModelSpeaking ? 'text-[#1a73e8] bg-[#e8f0fe]'
-                : 'text-[#9aa0a6] bg-[#f1f3f4]'
+              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium transition-colors ${isModelSpeaking 
+                ? (isDark ? 'text-blue-400 bg-blue-500/20' : 'text-[#1a73e8] bg-[#e8f0fe]')
+                : (isDark ? 'text-gray-400 bg-white/5' : 'text-[#9aa0a6] bg-[#f1f3f4]')
                 }`}>
                 {isModelSpeaking
-                  ? <><span className="w-1.5 h-1.5 rounded-full bg-[#1a73e8] animate-pulse" /> Speaking…</>
-                  : <><span className="w-1.5 h-1.5 rounded-full bg-[#34a853] animate-pulse" /> Listening</>
+                  ? <><span className="w-1.5 h-1.5 rounded-full bg-[#1a73e8] animate-pulse" /> {t(lang, 'chatSpeaking')}</>
+                  : <><span className="w-1.5 h-1.5 rounded-full bg-[#34a853] animate-pulse" /> {t(lang, 'chatListening')}</>
                 }
               </span>
             </div>
@@ -1435,41 +1459,38 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 </div>
               </div>
             )}
-            <div className="flex items-end gap-2 bg-white/80 backdrop-blur-md rounded-[28px] px-2.5 py-2.5
-                            border border-white shadow-xl shadow-black/5 focus-within:bg-white
-                            focus-within:shadow-2xl focus-within:shadow-blue-500/10 transition-all">
+            <div className={`flex items-end gap-2 backdrop-blur-md rounded-[28px] px-2.5 py-2.5
+                            border transition-all duration-300 ${isDark 
+                              ? 'bg-white/5 border-white/10 shadow-black/20 focus-within:bg-white/10' 
+                              : 'bg-white/80 border-white shadow-xl shadow-black/5 focus-within:bg-white focus-within:shadow-2xl focus-within:shadow-blue-500/10'}`}>
 
               {/* Camera button — left of input */}
-              <button onClick={isCameraOn ? () => { stopCamera(); setCamExpanded(false); } : startCamera}
                 className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
                             transition-all active:scale-90 mb-0.5 ${isCameraOn
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                    : 'text-gray-500 hover:bg-gray-100'
+                    : isDark ? 'text-gray-400 hover:bg-white/5' : 'text-gray-500 hover:bg-gray-100'
                   }`}
-                title={isCameraOn ? 'Camera on' : 'Turn on camera'}>
+                title={isCameraOn ? 'Camera on' : 'Turn on camera'}
                 {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
-              </button>
 
-              {/* File upload button */}
               <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
                 className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
                             transition-all active:scale-90 mb-0.5 ${uploadedFile
-                    ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                    : 'text-gray-500 hover:bg-gray-100'
+                    ? (isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100')
+                    : isDark ? 'text-gray-400 hover:bg-white/5' : 'text-gray-500 hover:bg-gray-100'
                   }`}>
                 <Paperclip size={18} />
               </button>
 
-              {/* Text area */}
               <textarea
                 ref={textareaRef} value={chatInput}
                 onChange={handleInputChange}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(false); } }}
-                placeholder={uploadedFile ? `Analyze this...` : isConnected ? 'Speak or type...' : 'Ask me anything...'}
+                placeholder={uploadedFile ? t(lang, 'chatFilePlaceholder').replace('{fileName}', uploadedFile.name) : t(lang, 'chatInputPlaceholder')}
                 rows={1} disabled={isSending}
-                className="flex-1 bg-transparent text-[15px] text-[#1a1c1e] resize-none outline-none
+                className={`flex-1 bg-transparent text-[15px] resize-none outline-none
                            placeholder:text-gray-400 leading-relaxed py-2 max-h-[140px]
-                           disabled:opacity-60 min-h-[40px] font-medium"
+                           disabled:opacity-60 min-h-[40px] font-medium ${isDark ? 'text-white' : 'text-[#1a1c1e]'}`}
               />
 
               {/* Right side — send or mic */}
@@ -1489,10 +1510,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               <div className="w-[72px] flex justify-start">
                 {isConnected && isModelSpeaking && (
                   <button onClick={interruptAgent}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest
-                               bg-amber-100 text-amber-700 border border-amber-200 active:scale-95
-                               transition-all animate-pulse min-h-[38px] shadow-sm">
-                    <StopCircle size={14} /> Stop
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest
+                               active:scale-95 transition-all animate-pulse min-h-[38px] shadow-sm ${isDark ? 'bg-amber-900/30 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+                    <StopCircle size={14} /> {t(lang, 'chatInterrupt')}
                   </button>
                 )}
               </div>

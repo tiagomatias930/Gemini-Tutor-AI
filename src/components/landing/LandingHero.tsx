@@ -85,7 +85,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               {/* Main Image with premium styling */}
               <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10" 
                 style={{ 
-                  background: `url('/Main.png')`, 
+                  background: `url('/Main.webp')`, 
                   opacity: isDark ? 0.8 : 1, 
                   backgroundSize: 'cover', 
                   backgroundPosition: 'center', 

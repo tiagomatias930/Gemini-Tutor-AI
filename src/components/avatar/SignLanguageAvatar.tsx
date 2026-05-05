@@ -11,7 +11,7 @@ const AvatarPlane: React.FC<AvatarProps> = ({ gesture }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   
   // Use try-catch or safe loading for texture
-  const texture = useTexture('/avatar.png');
+  const texture = useTexture('/avatar.webp');
 
   useFrame((state) => {
     if (!meshRef.current) return;

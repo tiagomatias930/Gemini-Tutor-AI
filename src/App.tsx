@@ -4,62 +4,68 @@ import {
   Mic, MicOff, Sparkles, Camera, CameraOff,
   BookOpen, ArrowRight, Volume2, MessageSquare,
   StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn, Paperclip, FileText,
-  Moon, Sun, Languages
+  Moon, Sun, Languages, Eye, Edit3, Search
 } from 'lucide-react';
 import { LandingPage } from './LandingPage';
 import { useTheme } from './contexts/ThemeContext';
 import { t, type Lang } from './i18n';
+import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
+import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Gemini Tutor".
-
-## LANGUAGE RULES (HIGHEST PRIORITY)
-- DETECT the language of the student's FIRST message and use THAT language for ALL your responses.
-- If the student writes/speaks in Portuguese, respond in Portuguese pt-PT. If in English, respond in English en-GB. If in French, respond in French fr-FR. Match ANY language.
-- NEVER default to Spanish unless the student explicitly writes or speaks in Spanish.
-- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.
-- If the student switches languages mid-conversation, switch with them immediately.
-- For voice/audio sessions: if you cannot clearly detect the language, default to Portuguese, NOT Spanish.
-
-## SESSION START — TRIAGE & ONBOARDING
-When the conversation begins (first exchange), introduce yourself briefly and gather key information by asking:
-1. What subject or topic they want to study today
-2. Their comfort level with the topic (beginner, intermediate, or advanced)
-3. What specific help they need (homework, exam prep, understanding a concept, etc.)
-
-Keep the triage natural and conversational — NOT a formal questionnaire. Weave the questions into a warm greeting.
-If the student jumps straight into a question, answer it first, then gently ask follow-up questions to understand their level and needs.
-
-## IN-SESSION STUDENT MODEL
-As the conversation progresses, build and maintain a mental model of this student:
-- **Language**: Which language they communicate in
-- **Level**: Beginner, intermediate, or advanced — adjust based on their responses
-- **Subject/Topics**: What they are studying in this session
-- **Learning style**: Do they respond better to examples, visual descriptions, step-by-step breakdowns, analogies, or formal definitions? Adapt accordingly.
-- **Strengths**: What they understand well
-- **Struggles**: What concepts they find difficult — revisit these with different approaches
-- **Progress**: What has been covered and resolved vs. what is still unclear
-
-Use this mental model to:
-- Avoid re-explaining things the student already understands
-- Revisit weak areas using different teaching methods
-- Gradually increase complexity as the student demonstrates understanding
-- Reference earlier parts of the conversation ("Earlier you mentioned...", "Building on what we discussed about...")
-
-## TEACHING METHODOLOGY
-- Help students understand problems step-by-step
-- Never give direct answers; guide them to discover solutions through questions and hints
-- Encourage and motivate them — celebrate when they get something right
-- Explain concepts clearly using simple language appropriate to their level
-- Ask follow-up questions to check understanding
-- If a student is stuck after 2-3 attempts, provide a more direct hint while still encouraging them to think
-- If you can see their homework (via an image), describe it and offer specific help
-- If you receive a document or file (PDF, text, book, study material), read it carefully and become a pedagogical guide: summarize key concepts, highlight important points, ask questions to check understanding, and help the student navigate the content progressively
-- Use the googleSearch tool to answer factual or current-events questions accurately
-
-## FORMATTING
-Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.`;
+const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"Gemini Tutor\".\n\n" +
+"## LANGUAGE RULES (HIGHEST PRIORITY)\n" +
+"- DETECT the language of the student's FIRST message and use THAT language for ALL your responses.\n" +
+"- If the student writes/speaks in Portuguese, respond in Portuguese pt-PT. If in English, respond in English en-GB. If in French, respond in French fr-FR. Match ANY language.\n" +
+"- NEVER default to Spanish unless the student explicitly writes or speaks in Spanish.\n" +
+"- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.\n" +
+"- If the student switches languages mid-conversation, switch with them immediately.\n" +
+"- For voice/audio sessions: if you cannot clearly detect the language, default to Portuguese, NOT Spanish.\n\n" +
+"## LONG-TERM MEMORY & PROGRESS\n" +
+"- **Persistent Context**: You have access to a \"Student Memory\" field which contains history from past sessions. Use it to personalize the experience.\n" +
+"- **Progress Tracking**: At the end of every significant explanation, if you learned something new about the student (strengths, weaknesses, level), include a hidden tag at the end of your message: '[GT_MEMORY_UPDATE: <updated summary of what you know>]'.\n" +
+"- **Reference Past Sessions**: \"Last time we talked about X, you found Y difficult. Shall we review that or move to Z?\"\n\n" +
+"## SESSION START — DIAGNOSTIC & TRIAGE\n" +
+"When a conversation begins or a new topic is introduced, you MUST identify the student's background and goals. If not provided spontaneously, ask naturally:\n" +
+"1. **Topic**: What exactly do they want to study?\n" +
+"2. **Comfort Level**: \"Que nível de conforto tens com este tema (iniciante, intermédio ou avançado)?\" (or English equivalent).\n" +
+"3. **Specific Goal**: \"Há algo específico que precises de ajuda? Por exemplo, estás a fazer um trabalho de casa, a preparar-te para um exame, ou apenas queres entender o conceito geral?\" (or English equivalent).\n\n" +
+"**Guidelines for Diagnostic:**\n" +
+"- Keep it warm and conversational, not like a robotic form.\n" +
+"- If the student starts with a complex question, provide a brief helpful initial response, then ask these diagnostic questions to calibrate your next steps.\n" +
+"- DO NOT proceed with deep technical explanations until you have a rough idea of their level.\n\n" +
+"## IN-SESSION STUDENT MODEL\n" +
+"Build and maintain a mental model of the student to ADAPT your responses:\n" +
+"- **Level Calibration**:\n" +
+"    - *Beginner*: Use simple language, analogies, and explain every technical term. Focus on the \"what\".\n" +
+"    - *Intermediate*: Focus on the \"how\" and connecting concepts. Use some technical terms but explain them briefly.\n" +
+"    - *Advanced*: Be concise, use professional terminology, and focus on deep nuances or complex edge cases.\n" +
+"- **Goal Calibration**:\n" +
+"    - *Homework*: Act as a \"collaborative problem solver\". Break the problem into sub-tasks. Guide, don't give answers.\n" +
+"    - *Exam Prep*: Act as an \"examiner\". Focus on key syllabus points, frequent exam questions, and time-saving tips.\n" +
+"    - *General Concept*: Act as a \"storyteller/philosopher\". Focus on the \"big picture\", history, and real-world impact.\n\n" +
+"## ACCESSIBILITY MODES (TRIGGER COMMANDS)\n" +
+"- **Blind Mode ('Light in Dark')**: Activated by command 'ativar modo light in dark'. Prioritize audio descriptions.\n" +
+"- **Deaf/Mute Mode ('Guide Trustful')**: Activated by 'guide trustful'. Prioritize the gestural avatar.\n\n" +
+"## ACCESSIBILITY — BLIND & LOW VISION (VISION ASSISTANCE)\n" +
+"If the student is blind or has low vision, you act as their \"Digital Eyes\":\n" +
+"- **Spatial Description**: When the camera is on, describe the environment using clock-face directions (e.g., \"There is a book at 2 o'clock on your desk\").\n" +
+"- **Object Context**: Don't just name objects; describe their state, color, and position relative to the student.\n" +
+"- **Safety & Alerts**: If you detect potential hazards (e.g., a spill, an open flame, or someone entering the room), mention it calmly and immediately.\n" +
+"- **Rich Audio Labels**: When explaining a concept, use highly descriptive language that builds a mental image. Instead of \"this diagram shows X\", say \"imagine a circle with three arrows pointing outward representing X...\".\n" +
+"- **Environment Scan**: Periodically (or when asked \"What's around me?\"), give a 360-degree summary of the visible environment.\n\n" +
+"## TEACHING METHODOLOGY & TONE\n" +
+"- **Reasoning First**: Before answering, perform a brief internal \"Chain of Thought\" (not visible to user) to ensure your explanation is logically sound and fits the student's level.\n" +
+"- **Tone**: Warm, encouraging, and highly adaptive.\n" +
+"- **Step-by-Step**: Always break complex topics into digestible chunks.\n" +
+"- **Socratic Method**: Ask questions that lead the student to the answer.\n" +
+"- **Deep Document Interpretation**: If a file is provided, do not just summarize. Relate it to the student's previous struggles and goals. Look for patterns in their questions about the document.\n" +
+"- **Check-ins**: Frequently ask \"Does this make sense so far?\" or \"Want to try an example of this?\".\n" +
+"- **Visuals & Whiteboard**: Use the '[GT_WHITEBOARD_COMMAND: {\"id\": \"unique_id\", \"type\": \"text|circle|square|arrow\", \"x\": 100, \"y\": 100, \"content\": \"optional\", \"width\": 50, \"height\": 50, \"color\": \"#hex\"}]' tag to draw on the interactive board while explaining math, diagrams, or logic. You can send multiple tags to build a complete scene.\n" +
+"- **Visuals**: Use the visualize tool (if appropriate) to show concepts if the student seems to be a visual learner.\n\n" +
+"## FORMATTING\n" +
+"Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.";
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
 const TEXT_MODEL = 'gemini-2.5-flash';
@@ -140,7 +146,12 @@ function renderInline(text: string): React.ReactNode[] {
 }
 
 function MarkdownContent({ text, isUser, isDark }: { text: string; isUser: boolean; isDark: boolean }) {
-  const lines = text.split('\n');
+  // Strip internal tags
+  const cleanText = text
+    .replace(/\[GT_MEMORY_UPDATE:.*?\]/gs, '')
+    .replace(/\[GT_WHITEBOARD_COMMAND:.*?\]/gs, '')
+    .trim();
+  const lines = cleanText.split('\n');
   const nodes: React.ReactNode[] = [];
   let i = 0;
   while (i < lines.length) {
@@ -535,12 +546,11 @@ function MobileChatMessages({
 function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void }) {
   const { theme, c, isDark, toggleTheme } = useTheme();
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lp_lang') as Lang) || 'en');
-
-  useEffect(() => {
-    localStorage.setItem('lp_lang', lang);
-  }, [lang]);
-
-  // ── UI state ──────────────────────────────────────────────────────────────
+  const [studentMemory, setStudentMemory] = useState<string>(() => localStorage.getItem('gt_student_memory') || 'No previous history.');
+  const [isDeafMode, setIsDeafMode] = useState(false);
+  const [avatarGesture, setAvatarGesture] = useState('idle');
+  const [whiteboardElements, setWhiteboardElements] = useState<WhiteboardElement[]>([]);
+  const [isWhiteboardVisible, setIsWhiteboardVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -552,6 +562,71 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [isSending, setIsSending] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [uploadedFile, setUploadedFile] = useState<FileAttachment | null>(null);
+
+  // Update memory persistence
+  useEffect(() => {
+    localStorage.setItem('gt_student_memory', studentMemory);
+  }, [studentMemory]);
+
+  useEffect(() => {
+    localStorage.setItem('lp_lang', lang);
+  }, [lang]);
+
+  useEffect(() => {
+    if (isModelSpeaking) setAvatarGesture('explaining');
+    else if (isConnected) setAvatarGesture('listening');
+    else setAvatarGesture('idle');
+  }, [isModelSpeaking, isConnected]);
+
+  // Monitor assistant messages for memory and whiteboard updates
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.role === 'assistant') {
+      // Memory updates
+      if (lastMsg.text.includes('[GT_MEMORY_UPDATE:')) {
+        const match = lastMsg.text.match(/\[GT_MEMORY_UPDATE:\s*(.*?)\]/s);
+        if (match && match[1]) setStudentMemory(match[1].trim());
+      }
+      // Whiteboard updates
+      if (lastMsg.text.includes('[GT_WHITEBOARD_COMMAND:')) {
+        const matches = lastMsg.text.matchAll(/\[GT_WHITEBOARD_COMMAND:\s*({.*?})\]/g);
+        const newElements = [...whiteboardElements];
+        let changed = false;
+        for (const match of matches) {
+          try {
+            const el = JSON.parse(match[1]);
+            const idx = newElements.findIndex(existing => existing.id === el.id);
+            if (idx > -1) newElements[idx] = el;
+            else newElements.push(el);
+            changed = true;
+          } catch (e) { console.error('Whiteboard parse error', e); }
+        }
+        if (changed) {
+          setWhiteboardElements(newElements);
+          setIsWhiteboardVisible(true);
+        }
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem('lp_lang', lang);
+  }, [lang]);
+
+  // ── Student context (in-session memory) ─────────────────────────────────
+
+  // Monitor assistant messages for memory updates
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.role === 'assistant' && lastMsg.text.includes('[GT_MEMORY_UPDATE:')) {
+      const match = lastMsg.text.match(/\[GT_MEMORY_UPDATE:\s*(.*?)\]/s);
+      if (match && match[1]) {
+        const newMemory = match[1].trim();
+        setStudentMemory(newMemory);
+        // We might want to strip the tag from the UI message, but for now we keep it simple
+      }
+    }
+  }, [messages]);
 
   // ── Student context (in-session memory) ─────────────────────────────────
   const [studentContext, setStudentContext] = useState<StudentContext>(() => {
@@ -618,6 +693,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
   const buildSystemInstruction = useCallback((msgs: ChatMessage[], ctx?: StudentContext) => {
     let instruction = TUTOR_SYSTEM_INSTRUCTION;
+    instruction += `\n\n## STUDENT PROGRESS MEMORY (LONG-TERM)\n${studentMemory}\n`;
+    
+    // Pass current accessibility states
+    instruction += `\n## CURRENT MODE STATUS\n- Vision Assist (Light in Dark): ${isVisionAssist ? 'ACTIVE' : 'OFF'}\n- Avatar (Guide Trustful): ${isDeafMode ? 'ACTIVE' : 'OFF'}\n`;
 
     // Append student profile if we have any context
     if (ctx && (ctx.language || ctx.level !== 'unknown' || ctx.subjects.length > 0)) {
@@ -1201,6 +1280,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   // Desktop (≥768px): side-by-side video + chat panel.
 
   const [camExpanded, setCamExpanded] = useState(false);
+  const [isVisionAssist, setIsVisionAssist] = useState(false);
 
   return (
     <div className={`h-dvh flex flex-col overflow-hidden relative select-none md:select-auto transition-colors duration-500`}
@@ -1254,6 +1334,24 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             {lang.toUpperCase()}
           </button>
 
+          {/* Deaf Mode Toggle */}
+          <button onClick={() => setIsDeafMode(!isDeafMode)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDeafMode ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+            <MessageSquare size={14} />
+            {isDeafMode ? 'AVATAR ON' : 'AVATAR OFF'}
+          </button>
+
+          {/* Vision Assist Toggle */}
+          <button onClick={() => setIsVisionAssist(!isVisionAssist)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isVisionAssist ? 'bg-amber-600 text-white border-amber-500 shadow-lg shadow-amber-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+            <Eye size={14} />
+            {isVisionAssist ? 'VISION ON' : 'VISION OFF'}
+          </button>
+
+          {/* Whiteboard Toggle */}
+          <button onClick={() => setIsWhiteboardVisible(!isWhiteboardVisible)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isWhiteboardVisible ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+            <Edit3 size={14} />
+            {isWhiteboardVisible ? 'BOARD ON' : 'BOARD OFF'}
+          </button>
+
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide border transition-all duration-500 ${isConnected ? 'bg-green-500/10 text-green-500 border-green-500/30'
             : isConnecting ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
               : isDark ? 'bg-white/5 text-gray-400 border-white/10' : 'bg-gray-100 text-gray-500 border-gray-200'
@@ -1268,11 +1366,30 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       </header>
 
       {/* ── DESKTOP: side-by-side ────────────────────────────────────────────── */}
-      <div className="hidden md:flex flex-1 gap-3 p-3 lg:p-4 overflow-hidden max-w-7xl mx-auto w-full">
+      <main className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 px-4 md:px-8 pb-4 md:pb-8 pt-4 overflow-hidden relative z-10"
+        style={{
+          paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right))'
+        }}>
 
-        {/* Desktop left — video + controls */}
-        <div className="flex flex-col gap-3 w-[42%] lg:w-[44%] shrink-0">
-          <div className="relative bg-[#1c1c1e] rounded-2xl overflow-hidden aspect-video shadow-sm flex-1">
+        {/* Desktop sidebar — Cam & Avatar & Whiteboard */}
+        <div className="hidden md:flex md:w-[320px] lg:w-[420px] flex-col gap-4 shrink-0 h-full overflow-y-auto custom-scrollbar pr-2">
+          {isWhiteboardVisible && (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-500 h-[300px] shrink-0">
+              <Whiteboard elements={whiteboardElements} isDark={isDark} />
+              <button onClick={() => setWhiteboardElements([])} className="mt-2 text-[10px] uppercase font-bold text-gray-400 hover:text-red-400 transition-colors">
+                Clear Board
+              </button>
+            </div>
+          )}
+
+          {isDeafMode && (
+            <div className="animate-in fade-in zoom-in duration-500">
+              <SignLanguageAvatar gesture={avatarGesture} />
+            </div>
+          )}
+          
+          <div className={`relative rounded-3xl overflow-hidden border shadow-sm transition-all duration-500 ${camExpanded ? 'flex-1' : 'h-[200px] lg:h-[240px]'} ${isDark ? 'bg-black/40 border-white/10' : 'bg-white/40 border-white shadow-black/5'}`}>
             <video ref={videoRef} autoPlay playsInline muted
               className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} />
             {!isCameraOn && (
@@ -1281,8 +1398,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 <p className="text-xs">Camera is off</p>
               </div>
             )}
-            {/* Note: on mobile the videoRef is used by the PiP overlay above.
-                The desktop panel is hidden on mobile so only one element uses the ref. */}
             {isConnected && (
               <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1
                               bg-black/55 backdrop-blur-sm rounded-full">
@@ -1335,6 +1450,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 </svg>Connecting...</>
                   : <><Mic size={17} /> Start Voice</>}
             </button>
+            {isVisionAssist && isConnected && (
+              <button onClick={() => {
+                setChatInput("Describe my surroundings in detail, including object positions and any safety concerns.");
+                sendChatMessage(false);
+              }} className="px-4 py-2.5 rounded-full flex items-center gap-2 font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30 transition-all active:scale-95 ml-2">
+                <Search size={17} /> Scan Room
+              </button>
+            )}
           </div>
         </div>
 
@@ -1357,10 +1480,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             isDark={isDark} lang={lang}
           />
         </div>
-      </div>
+      </main>
 
       {/* ── MOBILE: full-screen chat + PiP overlay ──────────────────────────── */}
       <div className="md:hidden flex-1 flex flex-col overflow-hidden relative">
+
+        {/* Avatar overlay for mobile */}
+        {isDeafMode && (
+          <div className="absolute top-4 left-4 z-50 w-32 h-44 shadow-2xl animate-in slide-in-from-left-4 duration-500">
+            <SignLanguageAvatar gesture={avatarGesture} />
+          </div>
+        )}
 
         {/* Camera PiP overlay — top-right, tappable to expand */}
         {isCameraOn && (
@@ -1518,6 +1648,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               </div>
 
               {/* Centre: big voice FAB with GLOW */}
+              {isVisionAssist && isConnected && (
+                <button onClick={() => {
+                  setChatInput("Describe my surroundings in detail, including object positions and any safety concerns.");
+                  sendChatMessage(false);
+                }} className="w-16 h-16 rounded-[24px] flex items-center justify-center transition-all active:scale-90 shadow-2xl bg-amber-500 text-white mr-4">
+                  <Search size={28} />
+                </button>
+              )}
               <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
                 className={`w-16 h-16 rounded-[24px] flex items-center justify-center
                             transition-all active:scale-90 shadow-2xl disabled:opacity-50

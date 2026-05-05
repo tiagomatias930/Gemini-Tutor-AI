@@ -1,6 +1,8 @@
 Planejamento da Nova Atualizacao do Gemini Tutor
 
-Objetivo Geral
+{   ======================== PARTE 1 ======================================
+    
+    Objetivo Geral
 Transformar o Gemini Tutor em uma plataforma educacional mais inclusiva, inteligente e interativa, ampliando a acessibilidade para usuarios com deficiencia auditiva, de fala e visual, ao mesmo tempo em que melhora a experiencia geral de todos os usuarios.
 
 Visao da Atualizacao
@@ -31,6 +33,17 @@ Frentes Principais da Atualizacao
 - Permitir que o Gemini Tutor escreva e desenhe no quadro enquanto explica conceitos, contas, diagramas ou processos.
 - Fortalecer a geracao de videos e imagens explicativas como suporte ao ensino multimodal.
 - Padronizar a experiencia pedagogica para que cada recurso complemente o aprendizado, e nao apenas ilustre o conteudo.
+
+
+}
+
+
+
+
+
+======================== PARTE 2 ======================================
+
+{
 
 Entregas Prioritarias
 - Avatar gestual para explicacoes educacionais.
@@ -70,3 +83,5 @@ Para casos especificos de pessoas portadoras de deficiencia:
 1-Pessoas cegas: para Pessoas segas o Gemini Tutor , vai operar via comando de voz, para esse modo ser ativo, o usuario deve pronuncinar ativar modo 'ligth in dark'
 2-Pessoas surdo: com o poder da visão computacional, o gemini deve ser capaz de ativar o modo 'guide trustful' modo guia fiel', com gesto que expressa ajuda; este modo vai deixar o avatar funcional , ensinando e conversando por meio de linguages gestual;
 3-Pessoas Mudo: com o poder da visão computacional, o gemini deve ser capaz de ativar o modo 'guide trustful' modo guia fiel', com gesto que expressa ajuda; este modo vai deixar o avatar funcional , ensinando e conversando por meio de linguages gestual;
+
+}

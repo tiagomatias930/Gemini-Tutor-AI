@@ -17,59 +17,28 @@ import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard
 const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"Gemini Tutor\".\n\n" +
 "## LANGUAGE RULES (HIGHEST PRIORITY)\n" +
 "- DETECT the language of the student's FIRST message and use THAT language for ALL your responses.\n" +
-"- If the student writes/speaks in Portuguese, respond in Portuguese pt-PT. If in English, respond in English en-GB. If in French, respond in French fr-FR. Match ANY language.\n" +
-"- NEVER default to Spanish unless the student explicitly writes or speaks in Spanish.\n" +
-"- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.\n" +
-"- If the student switches languages mid-conversation, switch with them immediately.\n" +
-"- For voice/audio sessions: if you cannot clearly detect the language, default to Portuguese, NOT Spanish.\n\n" +
-"## LONG-TERM MEMORY & PROGRESS\n" +
-"- **Persistent Context**: You have access to a \"Student Memory\" field which contains history from past sessions. Use it to personalize the experience.\n" +
-"- **Progress Tracking**: At the end of every significant explanation, if you learned something new about the student (strengths, weaknesses, level), include a hidden tag at the end of your message: '[GT_MEMORY_UPDATE: <updated summary of what you know>]'.\n" +
-"- **Reference Past Sessions**: \"Last time we talked about X, you found Y difficult. Shall we review that or move to Z?\"\n\n" +
-"## SESSION START — DIAGNOSTIC & TRIAGE\n" +
-"When a conversation begins or a new topic is introduced, you MUST identify the student's background and goals. If not provided spontaneously, ask naturally:\n" +
-"1. **Topic**: What exactly do they want to study?\n" +
-"2. **Comfort Level**: \"Que nível de conforto tens com este tema (iniciante, intermédio ou avançado)?\" (or English equivalent).\n" +
-"3. **Specific Goal**: \"Há algo específico que precises de ajuda? Por exemplo, estás a fazer um trabalho de casa, a preparar-te para um exame, ou apenas queres entender o conceito geral?\" (or English equivalent).\n\n" +
-"**Guidelines for Diagnostic:**\n" +
-"- Keep it warm and conversational, not like a robotic form.\n" +
-"- If the student starts with a complex question, provide a brief helpful initial response, then ask these diagnostic questions to calibrate your next steps.\n" +
-"- DO NOT proceed with deep technical explanations until you have a rough idea of their level.\n\n" +
-"## IN-SESSION STUDENT MODEL\n" +
-"Build and maintain a mental model of the student to ADAPT your responses:\n" +
-"- **Level Calibration**:\n" +
-"    - *Beginner*: Use simple language, analogies, and explain every technical term. Focus on the \"what\".\n" +
-"    - *Intermediate*: Focus on the \"how\" and connecting concepts. Use some technical terms but explain them briefly.\n" +
-"    - *Advanced*: Be concise, use professional terminology, and focus on deep nuances or complex edge cases.\n" +
-"- **Goal Calibration**:\n" +
-"    - *Homework*: Act as a \"collaborative problem solver\". Break the problem into sub-tasks. Guide, don't give answers.\n" +
-"    - *Exam Prep*: Act as an \"examiner\". Focus on key syllabus points, frequent exam questions, and time-saving tips.\n" +
-"    - *General Concept*: Act as a \"storyteller/philosopher\". Focus on the \"big picture\", history, and real-world impact.\n\n" +
-"## ACCESSIBILITY MODES (TRIGGER COMMANDS)\n" +
-"- **Blind Mode ('Light in Dark')**: Activated by command 'ativar modo light in dark'. Prioritize audio descriptions.\n" +
-"- **Deaf/Mute Mode ('Guide Trustful')**: Activated by 'guide trustful'. Prioritize the gestural avatar.\n\n" +
-"## ACCESSIBILITY — BLIND & LOW VISION (VISION ASSISTANCE)\n" +
-"If the student is blind or has low vision, you act as their \"Digital Eyes\":\n" +
-"- **Spatial Description**: When the camera is on, describe the environment using clock-face directions (e.g., \"There is a book at 2 o'clock on your desk\").\n" +
-"- **Object Context**: Don't just name objects; describe their state, color, and position relative to the student.\n" +
-"- **Safety & Alerts**: If you detect potential hazards (e.g., a spill, an open flame, or someone entering the room), mention it calmly and immediately.\n" +
-"- **Rich Audio Labels**: When explaining a concept, use highly descriptive language that builds a mental image. Instead of \"this diagram shows X\", say \"imagine a circle with three arrows pointing outward representing X...\".\n" +
-"- **Environment Scan**: Periodically (or when asked \"What's around me?\"), give a 360-degree summary of the visible environment.\n\n" +
-"## TEACHING METHODOLOGY & TONE\n" +
-"- **Reasoning First**: Before answering, perform a brief internal \"Chain of Thought\" (not visible to user) to ensure your explanation is logically sound and fits the student's level.\n" +
-"- **Tone**: Warm, encouraging, and highly adaptive.\n" +
-"- **Step-by-Step**: Always break complex topics into digestible chunks.\n" +
-"- **Socratic Method**: Ask questions that lead the student to the answer.\n" +
-"- **Deep Document Interpretation**: If a file is provided, do not just summarize. Relate it to the student's previous struggles and goals. Look for patterns in their questions about the document.\n" +
-"- **Check-ins**: Frequently ask \"Does this make sense so far?\" or \"Want to try an example of this?\".\n" +
-"- **Visuals & Whiteboard**: Use the '[GT_WHITEBOARD_COMMAND: {\"id\": \"unique_id\", \"type\": \"text|circle|square|arrow\", \"x\": 100, \"y\": 100, \"content\": \"optional\", \"width\": 50, \"height\": 50, \"color\": \"#hex\"}]' tag to draw on the interactive board while explaining math, diagrams, or logic. You can send multiple tags to build a complete scene.\n" +
-"- **Visuals**: Use the visualize tool (if appropriate) to show concepts if the student seems to be a visual learner.\n\n" +
-"## FORMATTING\n" +
-"Keep responses concise but helpful. Use markdown (bold, lists, code blocks) where it aids clarity.";
+"- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.\n\n" +
+"## STUDENT CONTEXTUAL MEMORY\n" +
+"- **Persistent Profile**: Access history from past sessions to personalize explanations.\n" +
+"- **Progress Tags**: At the end of a session or key concept, include: '[GT_MEMORY_UPDATE: <summary of student strengths/struggles>]'.\n\n" +
+"## TEACHING METHODOLOGY (SOCRATIC & STEP-BY-STEP)\n" +
+"- **GUIDE, DON'T TELL**: Use questions and hints. Never give direct answers.\n" +
+"- **Step-by-Step**: Break complex problems into manageable sub-tasks.\n" +
+"- **Chain of Thought**: Internally reason before explaining.\n\n" +
+"## ACCESSIBILITY & INCLUSION\n" +
+"- **Blind Mode ('Light in Dark')**: Act as \"Digital Eyes\". Use detailed clock-face spatial descriptions (e.g., \"There is a pencil at 2 o'clock\").\n" +
+"- **Intelligent Alerts**: If the camera is on, watch for student fatigue (yawning, looking away) or hazards. Warn about safety and suggest breaks.\n" +
+"- **Vision Flow**: Scan the environment, describe positions relative to the student, and adjust pace based on their emotional state.\n\n" +
+"## CONSOLIDATED MULTIMODAL EXPERIENCE (PHASE 4)\n" +
+"- **Seamless Integration**: Use text, voice, vision, and whiteboard simultaneously to create a holistic learning experience.\n" +
+"- **Adaptive Accessibility**: The interface transforms based on 'isDeafMode' (visual-first) or 'isVisionAssist' (audio-first).\n" +
+"- **Pedagogical Closure**: Always end concepts with a check for understanding and update the '[GT_MEMORY_UPDATE]' tag.\n\n" +
+"## FORMATTING & TONE\n" +
+"Concise, encouraging, and deeply personalized. You are not just a tool; you are a mentor.";
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
 const TEXT_MODEL = 'gemini-2.5-flash';
-const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
+const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 // Topics where generating a visual diagram is highly beneficial
@@ -85,12 +54,15 @@ interface StudentContext {
   topicsCovered: string[];
   triageComplete: boolean;
   messageCount: number;
+  isDeafMode?: boolean;
+  isVisionAssist?: boolean;
 }
 
 const EMPTY_STUDENT_CONTEXT: StudentContext = {
   language: '', level: 'unknown', subjects: [], learningStyle: 'unknown',
   strengths: [], struggles: [], topicsCovered: [],
   triageComplete: false, messageCount: 0,
+  isDeafMode: false, isVisionAssist: false,
 };
 
 function detectLanguage(text: string): string {
@@ -426,6 +398,7 @@ function DesktopChatContent({
 }) {
   const getFileIcon = (mimeType: string) => {
     if (mimeType.startsWith('image/')) return '🖼️';
+    if (mimeType.startsWith('video/')) return '🎥';
     if (mimeType === 'application/pdf') return '📄';
     return '📝';
   };
@@ -605,6 +578,24 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           setWhiteboardElements(newElements);
           setIsWhiteboardVisible(true);
         }
+      }
+
+      // Gesture detection for Sign Language Avatar
+      const text = lastMsg.text.toLowerCase();
+      if (text.includes('certo') || text.includes('correto') || text.includes('parabéns') || text.includes('sim')) {
+        setAvatarGesture('confirming');
+        setTimeout(() => setAvatarGesture('idle'), 3000);
+      } else if (text.includes('atenção') || text.includes('cuidado') || text.includes('erro') || text.includes('perigo')) {
+        setAvatarGesture('warning');
+        setTimeout(() => setAvatarGesture('idle'), 4000);
+      } else if (text.includes('explica') || text.includes('ensina') || text.includes('mostra')) {
+        setAvatarGesture('explaining');
+      } else if (text.includes('penso') || text.includes('analisando') || text.includes('pergunta')) {
+        setAvatarGesture('thinking');
+        setTimeout(() => setAvatarGesture('idle'), 5000);
+      } else if (text.includes('olha') || text.includes('vê') || text.includes('aponta')) {
+        setAvatarGesture('pointing');
+        setTimeout(() => setAvatarGesture('idle'), 3000);
       }
     }
   }, [messages]);
@@ -895,7 +886,11 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             sessionId,
             history: messages.slice(-12).map(m => ({ role: m.role, text: m.text })),
             generateImage: shouldVisualise,
-            studentContext,
+            studentContext: {
+              ...studentContext,
+              isDeafMode,
+              isVisionAssist
+            },
           }),
         });
         if (!res.ok) throw new Error(`Backend ${res.status}`);
@@ -1373,20 +1368,38 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         }}>
 
         {/* Desktop sidebar — Cam & Avatar & Whiteboard */}
-        <div className="hidden md:flex md:w-[320px] lg:w-[420px] flex-col gap-4 shrink-0 h-full overflow-y-auto custom-scrollbar pr-2">
-          {isWhiteboardVisible && (
-            <div className="animate-in fade-in slide-in-from-top-4 duration-500 h-[300px] shrink-0">
-              <Whiteboard elements={whiteboardElements} isDark={isDark} />
-              <button onClick={() => setWhiteboardElements([])} className="mt-2 text-[10px] uppercase font-bold text-gray-400 hover:text-red-400 transition-colors">
-                Clear Board
-              </button>
+        <div className={`hidden md:flex flex-col gap-4 shrink-0 h-full overflow-y-auto custom-scrollbar pr-2 transition-all duration-500 ${isDeafMode ? 'md:w-[450px] lg:w-[550px]' : 'md:w-[320px] lg:w-[420px]'}`}>
+          
+          {/* Prioritize Avatar in Deaf Mode */}
+          {isDeafMode && (
+            <div className="animate-in fade-in zoom-in duration-700 shadow-2xl rounded-3xl overflow-hidden border-2 border-purple-500/30">
+              <div className="bg-purple-600 px-4 py-2 flex items-center gap-2">
+                <Eye size={16} className="text-white" />
+                <span className="text-[10px] font-black text-white uppercase tracking-tighter">Sign Language Avatar Active</span>
+              </div>
+              <SignLanguageAvatar gesture={avatarGesture} />
             </div>
           )}
 
-          {isDeafMode && (
-            <div className="animate-in fade-in zoom-in duration-500">
-              <SignLanguageAvatar gesture={avatarGesture} />
+          {isWhiteboardVisible && (
+            <div className={`animate-in fade-in slide-in-from-top-4 duration-500 shrink-0 ${isDeafMode ? 'h-[400px]' : 'h-[300px]'}`}>
+              <Whiteboard elements={whiteboardElements} isDark={isDark} />
+              <div className="flex justify-between items-center mt-2">
+                <button onClick={() => setWhiteboardElements([])} className="text-[10px] uppercase font-bold text-gray-400 hover:text-red-400 transition-colors">
+                  Clear Board
+                </button>
+                <span className="text-[9px] font-bold text-indigo-500/60 uppercase">Multimodal Whiteboard</span>
+              </div>
             </div>
+          )}
+
+          {!isDeafMode && isVisionAssist && (
+             <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 animate-pulse">
+                <h4 className="text-[11px] font-black text-amber-600 uppercase mb-2 flex items-center gap-2">
+                  <Search size={14} /> Digital Eyes Active
+                </h4>
+                <p className="text-[10px] text-amber-700/80 leading-relaxed font-medium">Gemini is narrating your environment and watching for safety/fatigue.</p>
+             </div>
           )}
           
           <div className={`relative rounded-3xl overflow-hidden border shadow-sm transition-all duration-500 ${camExpanded ? 'flex-1' : 'h-[200px] lg:h-[240px]'} ${isDark ? 'bg-black/40 border-white/10' : 'bg-white/40 border-white shadow-black/5'}`}>

@@ -26,6 +26,19 @@ const AvatarPlane: React.FC<AvatarProps> = ({ gesture }) => {
       meshRef.current.scale.setScalar(1 + Math.sin(t * 12) * 0.02);
     } else if (gesture === 'listening') {
       meshRef.current.rotation.y = Math.sin(t * 2) * 0.1;
+      meshRef.current.scale.setScalar(1);
+    } else if (gesture === 'confirming') {
+      meshRef.current.position.y += Math.abs(Math.sin(t * 15)) * 0.1;
+      meshRef.current.rotation.x = Math.sin(t * 15) * 0.05;
+    } else if (gesture === 'thinking') {
+      meshRef.current.rotation.y = Math.sin(t * 0.5) * 0.2;
+      meshRef.current.rotation.z = 0.05;
+    } else if (gesture === 'pointing') {
+      meshRef.current.rotation.z = -0.1;
+      meshRef.current.position.x = Math.sin(t * 5) * 0.05;
+    } else if (gesture === 'warning') {
+      meshRef.current.rotation.z = Math.sin(t * 20) * 0.05;
+      meshRef.current.scale.setScalar(1 + Math.abs(Math.sin(t * 20)) * 0.05);
     } else {
       meshRef.current.rotation.z = Math.sin(t * 0.5) * 0.02;
     }

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export interface WhiteboardElement {
   id: string;
@@ -18,88 +19,106 @@ interface WhiteboardProps {
 }
 
 export const Whiteboard: React.FC<WhiteboardProps> = ({ elements, isDark }) => {
+  const { c } = useTheme();
+
   return (
-    <div className={`w-full h-full min-h-[300px] rounded-3xl border shadow-inner relative overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#0f1115] border-white/10' : 'bg-[#fcfcfd] border-gray-200'}`}>
-      {/* Background Grid */}
-      <div className="absolute inset-0 opacity-[0.03]" 
-           style={{ backgroundImage: `radial-gradient(${isDark ? 'white' : 'black'} 1px, transparent 1px)`, backgroundSize: '24px 24px' }} 
-      />
+    <div className="w-full h-full min-h-[300px] bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border shadow-inner relative" style={{ borderColor: c.border }}>
+      <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 rounded-full backdrop-blur-sm border" style={{ borderColor: c.border }}>
+        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Interactive Whiteboard</span>
+      </div>
 
-      <svg className="w-full h-full" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="0 0 500 500" className="w-full h-full p-8">
+        <defs>
+          <marker
+            id="arrowhead"
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+          >
+            <polygon points="0 0, 10 3.5, 0 7" fill={isDark ? '#4285f4' : '#1a73e8'} />
+          </marker>
+        </defs>
+
         <AnimatePresence>
-          {elements.map((el) => (
-            <motion.g
-              key={el.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.5, type: 'spring' }}
-            >
-              {el.type === 'text' && (
-                <text
-                  x={el.x}
-                  y={el.y}
-                  fill={el.color || (isDark ? '#fff' : '#1a1c1e')}
-                  className="text-lg font-medium font-serif italic select-none"
-                >
-                  {el.content}
-                </text>
-              )}
-
-              {el.type === 'circle' && (
-                <circle
-                  cx={el.x}
-                  cy={el.y}
-                  r={el.width || 40}
-                  fill="none"
-                  stroke={el.color || '#4285f4'}
-                  strokeWidth="2"
-                  strokeDasharray="200"
-                  style={{ strokeDashoffset: 0 }}
-                />
-              )}
-
-              {el.type === 'square' && (
-                <rect
-                  x={el.x}
-                  y={el.y}
-                  width={el.width || 80}
-                  height={el.height || 80}
-                  fill="none"
-                  stroke={el.color || '#ea4335'}
-                  strokeWidth="2"
-                  rx="8"
-                />
-              )}
-
-              {el.type === 'arrow' && (
-                <g>
-                  <line
-                    x1={el.x}
-                    y1={el.y}
-                    x2={el.x + (el.width || 100)}
-                    y2={el.y + (el.height || 0)}
-                    stroke={el.color || (isDark ? '#9aa0a6' : '#5f6368')}
+          {elements.map((cmd) => {
+            const color = cmd.color || (isDark ? '#4285f4' : '#1a73e8');
+            
+            switch (cmd.type) {
+              case 'circle':
+                return (
+                  <motion.circle
+                    key={cmd.id}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    cx={cmd.x}
+                    cy={cmd.y}
+                    r={cmd.width ? cmd.width / 2 : 25}
+                    fill="none"
+                    stroke={color}
                     strokeWidth="2"
-                    markerEnd="url(#arrowhead)"
                   />
-                  <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-                      <polygon points="0 0, 10 3.5, 0 7" fill={el.color || (isDark ? '#9aa0a6' : '#5f6368')} />
-                    </marker>
-                  </defs>
-                </g>
-              )}
-            </motion.g>
-          ))}
+                );
+              case 'square':
+                return (
+                  <motion.rect
+                    key={cmd.id}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    x={cmd.x - (cmd.width || 50) / 2}
+                    y={cmd.y - (cmd.height || 50) / 2}
+                    width={cmd.width || 50}
+                    height={cmd.height || 50}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth="2"
+                    rx="4"
+                  />
+                );
+              case 'text':
+                return (
+                  <motion.text
+                    key={cmd.id}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 20, opacity: 0 }}
+                    x={cmd.x}
+                    y={cmd.y}
+                    fill={isDark ? 'white' : 'black'}
+                    fontSize="14"
+                    fontWeight="bold"
+                    textAnchor="middle"
+                  >
+                    {cmd.content}
+                  </motion.text>
+                );
+              case 'line':
+              case 'arrow':
+                return (
+                  <motion.line
+                    key={cmd.id}
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    exit={{ pathLength: 0, opacity: 0 }}
+                    x1={cmd.x}
+                    y1={cmd.y}
+                    x2={cmd.x + (cmd.width || 50)}
+                    y2={cmd.y + (cmd.height || 50)}
+                    stroke={color}
+                    strokeWidth="2"
+                    markerEnd={cmd.type === 'arrow' ? 'url(#arrowhead)' : ''}
+                  />
+                );
+              default:
+                return null;
+            }
+          })}
         </AnimatePresence>
       </svg>
-
-      {/* Whiteboard Label */}
-      <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded-full border border-blue-500/20">
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-        <span className="text-[9px] font-black uppercase tracking-widest text-blue-500/80">Interactive Board</span>
-      </div>
     </div>
   );
 };

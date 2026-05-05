@@ -4,6 +4,7 @@ import { ChatSidebar } from './ChatSidebar';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
+import { Whiteboard } from './Whiteboard';
 import { Camera, CameraOff, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MarkdownContent, GeneratedImageCard, ImageGeneratingSkeleton } from './ChatComponents';
@@ -36,6 +37,10 @@ interface ChatInterfaceProps {
   uploadedFile: any;
   onFileClick: () => void;
   onFileClear: () => void;
+  // Whiteboard
+  isWhiteboardVisible: boolean;
+  whiteboardElements: any[];
+  setIsWhiteboardVisible: (v: boolean) => void;
   // Utils
   renderInline: (text: string) => React.ReactNode[];
   chatEndRef: React.RefObject<HTMLDivElement | null>;
@@ -180,34 +185,54 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = (props) => {
             />
           </div>
 
-          {/* Video Sidebar (Desktop) */}
-          {props.isCameraOn && (
-            <motion.div 
-              initial={{ x: 300, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              className="hidden lg:flex flex-col w-80 p-4 border-l overflow-hidden"
-              style={{ backgroundColor: c.bgAlt, borderColor: c.border }}
-            >
-              <div className="relative aspect-video rounded-2xl overflow-hidden bg-black shadow-2xl border-2 border-white/10">
-                <video ref={props.videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-[8px] font-bold text-white tracking-widest uppercase">Visual Input Active</span>
-                </div>
-              </div>
-              <div className="mt-4 p-4 rounded-2xl border bg-black/5 dark:bg-white/5" style={{ borderColor: c.border }}>
-                 <p className="text-xs font-bold uppercase tracking-wider opacity-40 mb-2">Visual Context</p>
-                 <p className="text-[11px]" style={{ color: c.textMuted }}>Gemini is watching and can see what you show to the camera.</p>
-              </div>
-              <button 
-                onClick={props.stopCamera}
-                className="mt-auto w-full py-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-medium transition-all hover:bg-red-500/10 text-red-500"
-                style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}
+          {/* Video & Whiteboard Sidebar (Desktop) */}
+          <div className="hidden lg:flex flex-col w-80 border-l overflow-y-auto" style={{ backgroundColor: c.bgAlt, borderColor: c.border }}>
+            {props.isCameraOn && (
+              <motion.div 
+                initial={{ x: 300, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="p-4"
               >
-                <CameraOff size={16} /> Stop Camera
-              </button>
-            </motion.div>
-          )}
+                <div className="relative aspect-video rounded-2xl overflow-hidden bg-black shadow-2xl border-2 border-white/10">
+                  <video ref={props.videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-full">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[8px] font-bold text-white tracking-widest uppercase">Visual Input Active</span>
+                  </div>
+                </div>
+                <div className="mt-4 p-4 rounded-2xl border bg-black/5 dark:bg-white/5" style={{ borderColor: c.border }}>
+                   <p className="text-xs font-bold uppercase tracking-wider opacity-40 mb-2">Visual Context</p>
+                   <p className="text-[11px]" style={{ color: c.textMuted }}>Gemini is watching and can see what you show to the camera.</p>
+                </div>
+                <button 
+                  onClick={props.stopCamera}
+                  className="mt-4 w-full py-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-medium transition-all hover:bg-red-500/10 text-red-500"
+                  style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                >
+                  <CameraOff size={16} /> Stop Camera
+                </button>
+              </motion.div>
+            )}
+
+            {props.isWhiteboardVisible && (
+              <motion.div 
+                initial={{ x: 300, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="p-4 flex-1 flex flex-col"
+              >
+                <div className="flex-1 min-h-[400px]">
+                  <Whiteboard commands={props.whiteboardElements} />
+                </div>
+                <button 
+                  onClick={() => props.setIsWhiteboardVisible(false)}
+                  className="mt-4 w-full py-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-medium transition-all hover:bg-blue-500/10"
+                  style={{ borderColor: c.border, color: c.textMuted }}
+                >
+                  <Palette size={16} /> Hide Whiteboard
+                </button>
+              </motion.div>
+            )}
+          </div>
         </div>
       </main>
     </div>

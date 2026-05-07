@@ -37,12 +37,12 @@ const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"G
 "Concise, encouraging, and deeply personalized. You are not just a tool; you are a mentor.";
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
-const TEXT_MODEL = 'gemini-2.5-flash';
+const TEXT_MODEL = 'gemini-2.0-flash';
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 // Topics where generating a visual diagram is highly beneficial
-const VISUAL_TOPIC_RE = /\b(explain|how does|how do|what is|describe|show|draw|diagram|illustrate|visualize|cycle|process|system|structure|anatomy|cell|molecule|atom|circuit|photosynthesis|mitosis|meiosis|krebs|dna|protein|evolution|ecosystem|solar system|water cycle|carbon cycle|nitrogen cycle|food chain|neural network|algorithm|data structure|sorting|equation|geometry|triangle|function|derivative|integral|wave|gravity|quantum|thermodynamics|osmosis|diffusion|respiration|digestion|heart|brain|lung|skeleton|muscle|revolution|empire|civilization|volcano|earthquake|plate tectonic|weather|ocean|atmosphere|electromagnetic)\b/i;
+const VISUAL_TOPIC_RE = /\b(explain|how does|what is|describe|show|draw|diagram|illustrate|visualize|cycle|process|system|structure|anatomy|cell|molecule|atom|circuit|photosynthesis|mitosis|meiosis|krebs|dna|protein|evolution|ecosystem|solar system|water cycle|carbon cycle|nitrogen cycle|food chain|neural network|algorithm|data structure|sorting|equation|geometry|triangle|function|derivative|integral|wave|gravity|quantum|thermodynamics|osmosis|diffusion|respiration|digestion|heart|brain|lung|skeleton|muscle|revolution|empire|civilization|volcano|earthquake|plate tectonic|weather|ocean|atmosphere|electromagnetic|newton|einstein|pythagoras|archimedes|map|chart|graph|plot)\b/i;
 
 interface StudentContext {
   language: string;
@@ -1214,6 +1214,12 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
           systemInstruction: buildSystemInstruction(currentMessages, studentContext),
           tools: [{ googleSearch: {} }],
+          turnTaking: {
+            voiceActivityDetection: {
+              noiseThreshold: 0.95, // High threshold to prevent background noise from interrupting
+              speechThreshold: 0.95  // Require clear speech to trigger a turn break
+            }
+          },
           ...({ inputAudioTranscription: {}, outputAudioTranscription: {} } as any),
         },
       });

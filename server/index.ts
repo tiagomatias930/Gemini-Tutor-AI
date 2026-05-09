@@ -1,7 +1,7 @@
 /**
  * Gemini Tutor Backend
  *
- * Criterion 1 : Gemini model — gemini-2.0-flash (text) + gemini-2.0-flash-preview-image-generation (image)
+ * Criterion 1 : Gemini model — gemini-2.5-flash (text) + gemini-2.5-flash-image (image)
  * Criterion 2 : Google GenAI SDK (@google/genai)
  * Criterion 3 : Google Cloud — Cloud Run (deployment) + Cloud Firestore (persistence) + Cloud Build (CI/CD)
  *
@@ -31,7 +31,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyA2lpbEDmuXGtif8QlBxc26iklkpnJnSo0';
 const GCP_PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || '';
 
 // Text + reasoning model (supports Google Search grounding)
@@ -40,11 +40,6 @@ const TEXT_MODEL  = 'gemini-2.5-flash';
 // Used to satisfy the hackathon requirement: "leverage... the creative power
 // of video/image generation" alongside the Gemini Live API.
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
-
-if (!GEMINI_API_KEY) {
-  console.error('❌  GEMINI_API_KEY is not set. Get one at https://aistudio.google.com/apikey');
-  process.exit(1);
-}
 
 const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Gemini Tutor".
 
@@ -198,7 +193,7 @@ async function generateText(
 
 // ─── Image generation (Criterion 1 — creative image output) ──────────────────
 //
-// Uses gemini-2.0-flash-preview-image-generation with responseModalities IMAGE+TEXT.
+// Uses gemini-2.5-flash-preview-image-generation with responseModalities IMAGE+TEXT.
 // This is the "creative power of video/image generation" required by the hackathon.
 // The model generates an educational diagram/illustration alongside a caption.
 

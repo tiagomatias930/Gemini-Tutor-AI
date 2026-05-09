@@ -31,7 +31,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyA2lpbEDmuXGtif8QlBxc26iklkpnJnSo0';
 const GCP_PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || '';
 
 // Text + reasoning model (supports Google Search grounding)
@@ -40,11 +40,6 @@ const TEXT_MODEL  = 'gemini-2.5-flash';
 // Used to satisfy the hackathon requirement: "leverage... the creative power
 // of video/image generation" alongside the Gemini Live API.
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
-
-if (!GEMINI_API_KEY) {
-  console.error('❌  GEMINI_API_KEY is not set. Get one at https://aistudio.google.com/apikey');
-  process.exit(1);
-}
 
 const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Gemini Tutor".
 

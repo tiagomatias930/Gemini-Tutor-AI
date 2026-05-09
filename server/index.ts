@@ -27,7 +27,7 @@ const app  = express();
 const PORT = parseInt(process.env.PORT || '8080');
 
 app.use(cors({ origin: true }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyA2lpbEDmuXGtif8QlBxc
 const GCP_PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || '';
 
 // Text + reasoning model (supports Google Search grounding)
-const TEXT_MODEL  = 'gemini-3-flash';
+const TEXT_MODEL  = 'gemini-2.5-flash';
 // Image generation model — produces images from text prompts.
 // Used to satisfy the hackathon requirement: "leverage... the creative power
 // of video/image generation" alongside the Gemini Live API.

@@ -221,7 +221,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = (props) => {
                 className="p-4 flex-1 flex flex-col"
               >
                 <div className="flex-1 min-h-[400px]">
-                  <Whiteboard commands={props.whiteboardElements} />
+                  <Whiteboard elements={props.whiteboardElements} isDark={isDark} />
                 </div>
                 <button 
                   onClick={() => props.setIsWhiteboardVisible(false)}

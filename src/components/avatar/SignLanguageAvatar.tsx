@@ -56,7 +56,7 @@ export const SignLanguageAvatar: React.FC<AvatarProps> = ({ gesture = 'idle' }) 
   return (
     <div className="w-full h-full min-h-[300px] bg-gradient-to-b from-blue-500/10 to-purple-500/10 rounded-3xl overflow-hidden border border-white/20 shadow-2xl backdrop-blur-sm relative group">
       <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-white/50 text-xs">Loading Avatar...</div>}>
-        <Canvas alpha camera={{ position: [0, 0, 5], fov: 45 }}>
+        <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
           <Environment preset="city" />
           <ambientLight intensity={0.5} />
           <pointLight position={[10, 10, 10]} intensity={1} />

@@ -31,7 +31,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyA2lpbEDmuXGtif8QlBxc26iklkpnJnSo0';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ' ';
 const GCP_PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || '';
 
 // Text + reasoning model (supports Google Search grounding)

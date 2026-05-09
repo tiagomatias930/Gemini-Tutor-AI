@@ -1,7 +1,7 @@
 /**
  * Gemini Tutor Backend
  *
- * Criterion 1 : Gemini model — gemini-2.0-flash (text) + gemini-2.0-flash-preview-image-generation (image)
+ * Criterion 1 : Gemini model — gemini-2.5-flash (text) + gemini-2.5-flash-image (image)
  * Criterion 2 : Google GenAI SDK (@google/genai)
  * Criterion 3 : Google Cloud — Cloud Run (deployment) + Cloud Firestore (persistence) + Cloud Build (CI/CD)
  *
@@ -198,7 +198,7 @@ async function generateText(
 
 // ─── Image generation (Criterion 1 — creative image output) ──────────────────
 //
-// Uses gemini-2.0-flash-preview-image-generation with responseModalities IMAGE+TEXT.
+// Uses gemini-2.5-flash-preview-image-generation with responseModalities IMAGE+TEXT.
 // This is the "creative power of video/image generation" required by the hackathon.
 // The model generates an educational diagram/illustration alongside a caption.
 

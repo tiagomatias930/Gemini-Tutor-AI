@@ -22,7 +22,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ isConnected, isConnectin
           <img src="./logoGT.png" alt="Logo" className="w-full h-full object-contain" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-bold" style={{ color: c.text }}>Gemini Tutor</span>
+          <span className="text-sm font-bold" style={{ color: c.text }}>Ngola Tutor</span>
           <div className="flex items-center gap-1.5">
             <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : isConnecting ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}`} />
             <span className="text-[10px] font-medium" style={{ color: c.textSubtle }}>

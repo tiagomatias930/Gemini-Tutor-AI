@@ -1,5 +1,5 @@
 
-# Gemini Tutor AI
+# Ngola Tutor AI
 
 An AI-powered homework assistant — point your camera, use your voice, or type to learn interactively with an AI tutor built on Google Gemini.
 
@@ -9,7 +9,7 @@ An AI-powered homework assistant — point your camera, use your voice, or type 
 
 ## Architecture
 
-![Gemini Tutor AI — System Architecture](public/diagram.png)
+![Ngola Tutor AI — System Architecture](public/diagram.png)
 
 ---
 
@@ -18,7 +18,7 @@ An AI-powered homework assistant — point your camera, use your voice, or type 
 
 ### Overview
 
-Gemini Tutor is a full-stack web application that acts as a patient AI tutor. It helps students understand problems step by step, without giving direct answers — encouraging them to discover solutions on their own. Features include:
+Ngola Tutor is a full-stack web application that acts as a patient AI tutor. It helps students understand problems step by step, without giving direct answers — encouraging them to discover solutions on their own. Features include:
 
 - **Camera Vision** — point your camera at your homework and get guidance
 - **Voice Chat** — talk to the tutor using your microphone
@@ -36,7 +36,7 @@ Gemini Tutor is a full-stack web application that acts as a patient AI tutor. It
 |-----------|----------------------------------------------------------------------------|
 | Frontend  | React 19, Vite 6, Tailwind CSS 4, Lucide Icons, Motion                      |
 | Backend   | Node.js, Express 4, TypeScript, tsx                                         |
-| AI        | Google Gemini (`gemini-3.1-flash-lite-preview`) via Vertex AI or `@google/genai` |
+| AI        | Google Gemini (`gemini-2.5-flash-image-preview`) via Vertex AI or `@google/genai` |
 | Deploy    | Docker, Google Cloud Run, Cloud Build                                       |
 
 
@@ -226,7 +226,7 @@ This will:
 
 ### Roadmap
 
-Upcoming updates planned for Gemini Tutor:
+Upcoming updates planned for Ngola Tutor:
 
 | Phase | Focus | Description |
 |-------|-------|-------------|
@@ -250,7 +250,7 @@ Key upcoming features:
 
 ### Visão Geral
 
-O Gemini Tutor é uma aplicação web full-stack que funciona como um tutor de IA paciente. Ajuda estudantes a compreender problemas passo a passo, sem dar respostas diretas — incentivando-os a descobrir as soluções por conta própria. Suporta:
+O Ngola Tutor é uma aplicação web full-stack que funciona como um tutor de IA paciente. Ajuda estudantes a compreender problemas passo a passo, sem dar respostas diretas — incentivando-os a descobrir as soluções por conta própria. Suporta:
 
 - **Visão por Câmera** — aponte a câmera para o dever de casa e receba orientação
 - **Chat por Voz** — fale com o tutor usando o microfone
@@ -460,7 +460,7 @@ Isso irá:
 
 ### Roteiro de Desenvolvimento
 
-Próximas atualizações planeadas para o Gemini Tutor:
+Próximas atualizações planeadas para o Ngola Tutor:
 
 | Fase | Foco | Descrição |
 |------|------|-----------|

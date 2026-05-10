@@ -37,7 +37,7 @@ const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"G
 "Concise, encouraging, and deeply personalized. You are not just a tool; you are a mentor.";
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
-const TEXT_MODEL = 'gemini-2.0-flash';
+const TEXT_MODEL = 'gemini-2.5-flash';
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 

@@ -35,7 +35,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ' ';
 const GCP_PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || '';
 
 // Text + reasoning model (supports Google Search grounding)
-const TEXT_MODEL  = 'gemini-2.5-flash-native-audio-preview-12-2025';
+const TEXT_MODEL  = 'gemini-2.5-flash';
 // Image generation model — produces images from text prompts.
 // Used to satisfy the hackathon requirement: "leverage... the creative power
 // of video/image generation" alongside the Gemini Live API.

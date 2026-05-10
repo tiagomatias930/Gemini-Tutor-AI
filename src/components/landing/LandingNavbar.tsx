@@ -33,10 +33,10 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight mb-3 text-center leading-tight">
-            <span className="text-[#4285f4]">G</span><span className="text-[#ea4335]">e</span>
-            <span className="text-[#fbbc05]">m</span><span className="text-[#4285f4]">i</span>
-            <span className="text-[#34a853]">n</span><span className="text-[#ea4335]">i</span>
+          <h1 className="text-3xl sm:text-4xl lg:text-4xl font-normal tracking-tight mb-3 text-center leading-tight mt-1">
+            <span className="text-[#4285f4]">N</span><span className="text-[#ea4335]">g</span>
+            <span className="text-[#fbbc05]">o</span><span className="text-[#4285f4]">l</span>
+            <span className="text-[#34a853]">a</span><span className="text-[#ea4335]"> </span>
             <span style={{ color: c.text }}> Tutor</span>
           </h1>
 

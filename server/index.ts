@@ -374,7 +374,7 @@ app.get('/api/sessions/:sessionId', async (req, res) => {
 
 const distPath = path.join(__dirname, '..', 'dist');
 app.use(express.static(distPath));
-app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+app.get('/*path', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

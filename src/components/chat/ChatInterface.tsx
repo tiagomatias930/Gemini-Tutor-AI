@@ -220,7 +220,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = (props) => {
                 animate={{ x: 0, opacity: 1 }}
                 className="p-4 flex-1 flex flex-col"
               >
-                <div className="flex-1 min-h-[400px]">
+                <div className="flex-1 min-h-[280px]">
                   <Whiteboard elements={props.whiteboardElements} isDark={isDark} />
                 </div>
                 <button 

@@ -37,7 +37,7 @@ const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"G
 "Concise, encouraging, and deeply personalized. You are not just a tool; you are a mentor.";
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
-const TEXT_MODEL = 'gemini-2.0-flash';
+const TEXT_MODEL = 'gemini-2.5-flash';
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
@@ -1388,7 +1388,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           )}
 
           {isWhiteboardVisible && (
-            <div className={`animate-in fade-in slide-in-from-top-4 duration-500 shrink-0 ${isDeafMode ? 'h-[400px]' : 'h-[300px]'}`}>
+            <div className={`animate-in fade-in slide-in-from-top-4 duration-500 ${isDeafMode ? 'h-[350px] shrink-0' : 'flex-1 min-h-[280px] max-h-[450px]'}`}>
               <Whiteboard elements={whiteboardElements} isDark={isDark} />
               <div className="flex justify-between items-center mt-2">
                 <button onClick={() => setWhiteboardElements([])} className="text-[10px] uppercase font-bold text-gray-400 hover:text-red-400 transition-colors">
@@ -1408,7 +1408,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
              </div>
           )}
           
-          <div className={`relative rounded-3xl overflow-hidden border shadow-sm transition-all duration-500 ${camExpanded ? 'flex-1' : 'h-[200px] lg:h-[240px]'} ${isDark ? 'bg-black/40 border-white/10' : 'bg-white/40 border-white shadow-black/5'}`}>
+          <div className={`relative rounded-3xl overflow-hidden border shadow-sm transition-all duration-500 ${camExpanded ? 'flex-[0.8] min-h-[180px]' : 'h-[180px] lg:h-[220px]'} ${isDark ? 'bg-black/40 border-white/10' : 'bg-white/40 border-white shadow-black/5'}`}>
             <video ref={videoRef} autoPlay playsInline muted
               className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} />
             {!isCameraOn && (

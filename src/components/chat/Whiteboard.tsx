@@ -113,7 +113,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = memo(({ elements, isDark })
 
   return (
     <div 
-      className="w-full h-full min-h-[500px] bg-white dark:bg-[#121212] rounded-3xl overflow-hidden border shadow-inner relative" 
+      className="w-full h-full bg-white dark:bg-[#121212] rounded-3xl overflow-hidden border shadow-inner relative" 
       style={{ borderColor: c.border }}
     >
       <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 rounded-full backdrop-blur-sm border" style={{ borderColor: c.border }}>

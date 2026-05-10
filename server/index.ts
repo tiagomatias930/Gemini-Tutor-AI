@@ -1,5 +1,5 @@
 /**
- * Gemini Tutor Backend
+ * Ngola Tutor Backend
  *
  * Criterion 1 : Gemini model — gemini-2.5-flash (text) + gemini-2.5-flash-image (image)
  * Criterion 2 : Google GenAI SDK (@google/genai)
@@ -41,7 +41,7 @@ const TEXT_MODEL  = 'gemini-2.5-flash';
 // of video/image generation" alongside the Gemini Live API.
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 
-const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Gemini Tutor".
+const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Ngola Tutor".
 
 ## LANGUAGE RULES (HIGHEST PRIORITY)
 - DETECT the language of the student's FIRST message and use THAT language for ALL your responses.
@@ -374,7 +374,7 @@ app.get('/api/sessions/:sessionId', async (req, res) => {
 
 const distPath = path.join(__dirname, '..', 'dist');
 app.use(express.static(distPath));
-app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+app.get('/*path', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

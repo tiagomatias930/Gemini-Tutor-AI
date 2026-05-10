@@ -14,7 +14,7 @@ import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"Gemini Tutor\".\n\n" +
+const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"Ngola Tutor\".\n\n" +
 "## LANGUAGE RULES (HIGHEST PRIORITY)\n" +
 "- DETECT the language of the student's FIRST message and use THAT language for ALL your responses.\n" +
 "- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.\n\n" +
@@ -219,7 +219,7 @@ function ImageGeneratingSkeleton({ isDark }: { isDark: boolean }) {
       <div className={`h-40 animate-pulse ${isDark ? 'bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800' : 'bg-gradient-to-r from-[#f1f3f4] via-[#e8eaed] to-[#f1f3f4]'}`} />
       <div className="px-3 py-2 flex items-center gap-2">
         <Palette size={11} className="text-[#9b72cb]" />
-        <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-[#9aa0a6]'}`}>Generating illustration with Gemini…</span>
+        <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-[#9aa0a6]'}`}>Generating illustration …</span>
       </div>
     </div>
   );
@@ -1404,7 +1404,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 <h4 className="text-[11px] font-black text-amber-600 uppercase mb-2 flex items-center gap-2">
                   <Search size={14} /> Digital Eyes Active
                 </h4>
-                <p className="text-[10px] text-amber-700/80 leading-relaxed font-medium">Gemini is narrating your environment and watching for safety/fatigue.</p>
+                <p className="text-[10px] text-amber-700/80 leading-relaxed font-medium">Ngola is narrating your environment and watching for safety/fatigue.</p>
              </div>
           )}
           

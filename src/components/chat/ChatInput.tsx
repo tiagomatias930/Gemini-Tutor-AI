@@ -67,7 +67,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={uploadedFile ? "Ask about this file..." : "Ask Gemini anything..."}
+              placeholder={uploadedFile ? "Ask about this file..." : "Ask Ngola Tutor anything..."}
               rows={1}
               disabled={isSending}
               className="w-full pl-5 pr-12 py-3.5 rounded-2xl text-sm transition-all resize-none outline-none border focus:ring-2 disabled:opacity-60 max-h-32"
@@ -155,7 +155,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             Shift + Enter for new line
           </p>
           <p className="text-[10px] text-gray-400 font-medium hidden md:block">
-            Gemini Tutor · Advanced Learning Engine
+            Ngola Tutor · Advanced Learning Engine
           </p>
         </div>
       </div>

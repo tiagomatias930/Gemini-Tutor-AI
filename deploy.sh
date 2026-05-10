@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# Deploy Gemini Tutor to Google Cloud Run
+# Deploy Ngola Tutor to Google Cloud Run
 #
 # Prerequisites:
 #   1. Install Google Cloud CLI: https://cloud.google.com/sdk/docs/install
@@ -22,7 +22,7 @@ set -e
 # Configuration
 PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-$(gcloud config get project 2>/dev/null)}"
 REGION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
-SERVICE_NAME="gemini-tutor-ai"
+SERVICE_NAME="ngola-tutor-ai"
 IMAGE_NAME="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
 if [ -z "$PROJECT_ID" ]; then
@@ -32,7 +32,7 @@ if [ -z "$PROJECT_ID" ]; then
 fi
 
 echo "═══════════════════════════════════════════════════════"
-echo "  Deploying Gemini Tutor to Google Cloud Run"
+echo "  Deploying Ngola Tutor to Google Cloud Run"
 echo "═══════════════════════════════════════════════════════"
 echo "  Project:  $PROJECT_ID"
 echo "  Region:   $REGION"

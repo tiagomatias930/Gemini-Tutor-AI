@@ -89,7 +89,7 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
              </span>
           </div>
           <p style={{ color: c.textMuted }} className="text-sm">
-            © {new Date().getFullYear()} Gemini Tutor AI. All rights reserved.
+            © {new Date().getFullYear()} Ngola Tutor AI. All rights reserved.
           </p>
         </div>
       </footer>

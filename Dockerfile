@@ -1,4 +1,4 @@
-# ─── Gemini Tutor - Google Cloud Run Dockerfile ───────────────────────────────
+# ─── Ngola Tutor - Google Cloud Run Dockerfile ───────────────────────────────
 # Multi-stage build: builds frontend + backend, then creates a minimal image
 # Deploy with: gcloud run deploy (see deploy.sh)
 

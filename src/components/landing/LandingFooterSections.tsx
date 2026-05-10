@@ -8,7 +8,7 @@ export const LandingCaseStudies: React.FC<LandingSectionProps> = ({ lang, c, isD
   const stories = [
     {
       name: 'Tiago Matias', subject: 'Full Stack Development', improvement: '+85%',
-      quote: lang === 'pt' ? 'Gemini Tutor ajudou tremendamente no meu aprendizado em desenvolvimento. Excelente ferramenta!' : 'Gemini Tutor tremendously helped my learning in development. Excellent tool!',
+      quote: lang === 'pt' ? 'Ngola Tutor ajudou tremendamente no meu aprendizado em desenvolvimento. Excelente ferramenta!' : 'Ngola Tutor tremendously helped my learning in development. Excellent tool!',
       avatar: 'https://avatars.githubusercontent.com/u/35434705'
     },
     {
@@ -18,7 +18,7 @@ export const LandingCaseStudies: React.FC<LandingSectionProps> = ({ lang, c, isD
     },
     {
       name: 'Manuel', subject: 'Software Engineering', improvement: '+75%',
-      quote: lang === 'pt' ? 'Com o Gemini Tutor consegui melhorar meu código e entender design patterns muito melhor.' : 'With Gemini Tutor I improved my code and understood design patterns much better.',
+      quote: lang === 'pt' ? 'Com o Ngola Tutor consegui melhorar meu código e entender design patterns muito melhor.' : 'With Ngola Tutor I improved my code and understood design patterns much better.',
       avatar: 'https://avatars.githubusercontent.com/u/45087017'
     },
     {

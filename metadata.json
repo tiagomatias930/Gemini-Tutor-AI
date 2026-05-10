@@ -1,5 +1,5 @@
 {
-  "name": "Gemini Live Tutor",
+  "name": "Ngola Tutor",
   "description": "A real-time, interactive AI tutor that can see and discuss your homework.",
   "requestFramePermissions": ["camera", "microphone"]
 }

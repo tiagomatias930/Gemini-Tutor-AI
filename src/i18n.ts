@@ -104,6 +104,7 @@ export const translations = {
     chatLensActive: 'Lens Active',
     chatEnterprise: 'Enterprise AI Tutor',
     chatPressEnter: 'Press Enter to Send',
+    chatMessages: 'Messages',
   },
   pt: {
     navHome: 'Início',
@@ -199,6 +200,7 @@ export const translations = {
     chatLensActive: 'Lente Ativa',
     chatEnterprise: 'Tutor IA Empresarial',
     chatPressEnter: 'Prime Enter para Enviar',
+    chatMessages: 'Mensagens',
   },
 } as const;
 

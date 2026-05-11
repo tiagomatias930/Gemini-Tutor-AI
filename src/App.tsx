@@ -405,10 +405,10 @@ function DesktopChatContent({
 
   return (
     <>
-      <div className={`shrink-0 px-6 py-4 border-b flex items-center justify-between transition-all duration-500 ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/20 border-white/40 backdrop-blur-sm'}`}>
+      <div className={`shrink-0 px-6 h-14 border-b flex items-center justify-between transition-all duration-500 ${isDark ? 'bg-black/20 border-white/10' : 'bg-white/20 border-white/40 backdrop-blur-sm'}`}>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-          <span className={`text-xs font-bold uppercase tracking-widest opacity-80 ${isDark ? 'text-gray-400' : 'text-[#1a1c1e]'}`}>Conversation Context</span>
+          <span className={`text-[10px] font-black uppercase tracking-[0.2em] opacity-80 ${isDark ? 'text-gray-400' : 'text-[#1a1c1e]'}`}>Conversation Context</span>
         </div>
         <div className="flex items-center gap-2">
           {isCameraOn && (
@@ -523,7 +523,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [isDeafMode, setIsDeafMode] = useState(false);
   const [avatarGesture, setAvatarGesture] = useState('idle');
   const [whiteboardElements, setWhiteboardElements] = useState<WhiteboardElement[]>([]);
-  const [isWhiteboardVisible, setIsWhiteboardVisible] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -576,7 +576,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         }
         if (changed) {
           setWhiteboardElements(newElements);
-          setIsWhiteboardVisible(true);
         }
       }
 
@@ -1347,10 +1346,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             {isVisionAssist ? 'VISION ON' : 'VISION OFF'}
           </button>
 
-          {/* Whiteboard Toggle */}
-          <button onClick={() => setIsWhiteboardVisible(!isWhiteboardVisible)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isWhiteboardVisible ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
-            <Edit3 size={14} />
-            {isWhiteboardVisible ? 'BOARD ON' : 'BOARD OFF'}
+          {/* Messages Toggle */}
+          <button onClick={() => setIsChatVisible(!isChatVisible)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isChatVisible ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+            <MessageSquare size={14} />
+            {isChatVisible ? `${t(lang, 'chatMessages').toUpperCase()} ON` : `${t(lang, 'chatMessages').toUpperCase()} OFF`}
           </button>
 
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide border transition-all duration-500 ${isConnected ? 'bg-green-500/10 text-green-500 border-green-500/30'
@@ -1373,28 +1372,61 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           paddingRight: 'max(1rem, env(safe-area-inset-right))'
         }}>
 
-        {/* Desktop sidebar — Cam & Avatar & Whiteboard */}
-        <div className={`hidden md:flex flex-col gap-4 shrink-0 h-full overflow-y-auto custom-scrollbar pr-2 transition-all duration-500 ${isDeafMode ? 'md:w-[450px] lg:w-[550px]' : 'md:w-[320px] lg:w-[420px]'}`}>
-          
-          {/* Prioritize Avatar in Deaf Mode */}
-          {isDeafMode && (
-            <div className="animate-in fade-in zoom-in duration-700 shadow-2xl rounded-3xl overflow-hidden border-2 border-purple-500/30">
-              <div className="bg-purple-600 px-4 py-2 flex items-center gap-2">
-                <Eye size={16} className="text-white" />
-                <span className="text-[10px] font-black text-white uppercase tracking-tighter">Sign Language Avatar Active</span>
+        {/* Left Sidebar — Camera, Avatar & Session Controls */}
+        <div className="hidden md:flex flex-col gap-4 shrink-0 h-full overflow-y-auto custom-scrollbar w-[320px] lg:w-[400px]">
+          {/* Camera Feed */}
+          <div className={`relative rounded-3xl overflow-hidden border shadow-sm transition-all duration-500 h-[240px] lg:h-[300px] ${isDark ? 'bg-black/40 border-white/10' : 'bg-white/40 border-white border-white/60 shadow-black/5'}`}>
+            <video ref={videoRef} autoPlay playsInline muted
+              className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} />
+            {!isCameraOn && (
+              <div className="w-full h-full flex flex-col items-center justify-center text-[#9aa0a6] gap-2">
+                <div className="w-16 h-16 rounded-full bg-black/5 flex items-center justify-center">
+                  <Camera size={32} strokeWidth={1.5} />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest opacity-40">Camera is off</p>
               </div>
-              <SignLanguageAvatar gesture={avatarGesture} />
+            )}
+            {isConnected && (
+              <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5
+                              bg-black/55 backdrop-blur-md rounded-full border border-white/10">
+                <span className="w-2 h-2 rounded-full bg-[#ea4335] animate-pulse shadow-[0_0_8px_rgba(234,67,53,0.8)]" />
+                <span className="text-white text-[10px] font-bold tracking-widest uppercase">Live Session</span>
+              </div>
+            )}
+            {isModelSpeaking && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2
+                              px-4 py-2 bg-black/65 backdrop-blur-md rounded-full border border-white/10">
+                {[0, 140, 280].map(d => (
+                  <span key={d} className="w-1.5 rounded-full bg-[#4285f4] animate-bounce"
+                    style={{ height: '14px', animationDelay: `${d}ms` }} />
+                ))}
+                <span className="text-white text-[10px] font-bold uppercase tracking-wider">Tutor Speaking</span>
+              </div>
+            )}
+            
+            {/* Camera Toggle Button Overlay */}
+            <div className="absolute bottom-4 right-4">
+              <button onClick={isCameraOn ? stopCamera : startCamera}
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-90 ${isCameraOn
+                  ? 'bg-white text-[#5f6368] hover:scale-105'
+                  : 'bg-black/40 text-white hover:bg-black/60 border border-white/20'
+                  }`}>
+                {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
+              </button>
             </div>
-          )}
+          </div>
 
-          {isWhiteboardVisible && (
-            <div className={`animate-in fade-in slide-in-from-top-4 duration-500 ${isDeafMode ? 'h-[350px] shrink-0' : 'flex-1 min-h-[280px] max-h-[450px]'}`}>
-              <Whiteboard elements={whiteboardElements} isDark={isDark} />
-              <div className="flex justify-between items-center mt-2">
-                <button onClick={() => setWhiteboardElements([])} className="text-[10px] uppercase font-bold text-gray-400 hover:text-red-400 transition-colors">
-                  Clear Board
-                </button>
-                <span className="text-[9px] font-bold text-indigo-500/60 uppercase">Multimodal Whiteboard</span>
+          {/* Avatar (if active) */}
+          {isDeafMode && (
+            <div className="h-[300px] lg:h-[350px] animate-in fade-in zoom-in duration-700 shadow-2xl rounded-3xl overflow-hidden border border-purple-500/30 bg-black/40 backdrop-blur-md relative shrink-0">
+              <div className="bg-purple-600/20 backdrop-blur-md px-4 py-2 flex items-center justify-between border-b border-purple-500/20">
+                <div className="flex items-center gap-2">
+                  <Eye size={14} className="text-purple-400" />
+                  <span className="text-[10px] font-black text-purple-400 uppercase tracking-tighter">Sign Language Avatar</span>
+                </div>
+              </div>
+              <div className="h-[calc(100%-36px)]">
+                <SignLanguageAvatar gesture={avatarGesture} />
               </div>
             </div>
           )}
@@ -1407,98 +1439,84 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 <p className="text-[10px] text-amber-700/80 leading-relaxed font-medium">Ngola is narrating your environment and watching for safety/fatigue.</p>
              </div>
           )}
-          
-          <div className={`relative rounded-3xl overflow-hidden border shadow-sm transition-all duration-500 ${camExpanded ? 'flex-[0.8] min-h-[180px]' : 'h-[180px] lg:h-[220px]'} ${isDark ? 'bg-black/40 border-white/10' : 'bg-white/40 border-white shadow-black/5'}`}>
-            <video ref={videoRef} autoPlay playsInline muted
-              className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} />
-            {!isCameraOn && (
-              <div className="w-full h-full flex flex-col items-center justify-center text-[#9aa0a6] gap-2">
-                <Camera size={36} strokeWidth={1.5} />
-                <p className="text-xs">Camera is off</p>
-              </div>
-            )}
-            {isConnected && (
-              <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1
-                              bg-black/55 backdrop-blur-sm rounded-full">
-                <span className="w-2 h-2 rounded-full bg-[#ea4335] animate-pulse" />
-                <span className="text-white text-[10px] font-bold tracking-widest">LIVE</span>
-              </div>
-            )}
-            {isModelSpeaking && (
-              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5
-                              px-3 py-1.5 bg-black/65 backdrop-blur-sm rounded-full">
-                {[0, 140, 280].map(d => (
-                  <span key={d} className="w-1.5 rounded-full bg-[#4285f4] animate-bounce"
-                    style={{ height: '14px', animationDelay: `${d}ms` }} />
-                ))}
-                <span className="text-white text-[10px] ml-1 font-medium">Speaking</span>
-              </div>
-            )}
-          </div>
 
-          <p className="text-[11px] text-[#9aa0a6] text-center">{statusMessage}</p>
-          {error && (
-            <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl text-[#c5221f] text-xs text-center">
-              {error}
+          <div className="mt-auto space-y-4">
+            {error && (
+              <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl text-[#c5221f] text-xs text-center">
+                {error}
+              </div>
+            )}
+            
+            <div className="flex flex-col gap-3">
+              <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
+                className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm
+                            transition-all shadow-xl hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-[#ea4335] text-white shadow-red-500/20' : 'bg-[#1a73e8] text-white shadow-blue-500/20'
+                  }`}>
+                {isConnected ? <><MicOff size={18} /> Stop Session</>
+                  : isConnecting ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg> Connecting...</>
+                    : <><Mic size={18} /> Start Tutoring</>}
+              </button>
+
+              {isVisionAssist && isConnected && (
+                <button onClick={() => {
+                  setChatInput("Describe my surroundings in detail, including object positions and any safety concerns.");
+                  sendChatMessage(false);
+                }} className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/20 transition-all active:scale-95">
+                  <Search size={18} /> Scan Workspace
+                </button>
+              )}
             </div>
-          )}
-
-          <div className="flex items-center gap-2.5 justify-center flex-wrap">
-            <button onClick={isCameraOn ? stopCamera : startCamera}
-              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all shadow-sm ${isCameraOn
-                ? 'bg-white text-[#5f6368] border border-[#dadce0] hover:bg-[#f8f9fa]'
-                : 'bg-[#f1f3f4] text-[#9aa0a6] hover:bg-[#e8eaed]'
-                }`}>
-              {isCameraOn ? <Camera size={19} /> : <CameraOff size={19} />}
-            </button>
-            {isConnected && isModelSpeaking && (
-              <button onClick={interruptAgent}
-                className="px-4 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
-                           bg-[#f9ab00] hover:bg-[#e8a000] text-white shadow-sm transition-all animate-pulse">
-                <StopCircle size={17} /> Interrupt
-              </button>
-            )}
-            <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
-              className={`px-5 py-2.5 rounded-full flex items-center gap-2 font-medium text-sm
-                          transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-[#ea4335] text-white hover:bg-[#d93025]' : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
-                }`}>
-              {isConnected ? <><MicOff size={17} /> Stop Voice</>
-                : isConnecting ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>Connecting...</>
-                  : <><Mic size={17} /> Start Voice</>}
-            </button>
-            {isVisionAssist && isConnected && (
-              <button onClick={() => {
-                setChatInput("Describe my surroundings in detail, including object positions and any safety concerns.");
-                sendChatMessage(false);
-              }} className="px-4 py-2.5 rounded-full flex items-center gap-2 font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30 transition-all active:scale-95 ml-2">
-                <Search size={17} /> Scan Room
-              </button>
-            )}
+            
+            <p className="text-[10px] font-bold uppercase tracking-widest text-center opacity-40">{statusMessage}</p>
           </div>
         </div>
 
-        {/* Desktop right — chat */}
-        <div className="flex-1 flex flex-col bg-white/40 backdrop-blur-md rounded-2xl shadow-sm border z-10 overflow-hidden transition-all duration-500" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(232, 234, 237, 1)' }}>
-          <DesktopChatContent
-            messages={messages} liveTranscript={liveTranscript} isSending={isSending}
-            isCameraOn={isCameraOn} chatInput={chatInput} textareaRef={textareaRef}
-            chatEndRef={chatEndRef}
-            onInputChange={handleInputChange}
-            onSend={() => sendChatMessage(false)}
-            onCapture={() => sendChatMessage(true)}
-            onSuggestion={(s) => { setChatInput(s); textareaRef.current?.focus(); }}
-            onVisualize={(q, i) => generateVisual(q, i)}
-            generateVisual={generateVisual}
-            uploadedFile={uploadedFile}
-            fileInputRef={fileInputRef}
-            onFileSelect={handleFileSelect}
-            onFileClear={() => setUploadedFile(null)}
-            isDark={isDark} lang={lang}
-          />
+        {/* Central Area — The Whiteboard Stage */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+          <div className="flex-1 flex flex-col bg-white/5 rounded-3xl border border-white/10 shadow-inner overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="bg-indigo-600/10 px-6 h-14 flex items-center justify-between border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Interactive Learning Workspace</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <button onClick={() => setWhiteboardElements([])} className="text-[10px] uppercase font-bold text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1.5">
+                  <X size={12} /> Clear Workspace
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 relative">
+              <Whiteboard elements={whiteboardElements} isDark={isDark} />
+            </div>
+          </div>
         </div>
+
+        {/* Right Sidebar — Chat (Toggled by Messages button) */}
+        {isChatVisible && (
+          <div className="hidden md:flex flex-col shrink-0 h-full overflow-hidden w-[350px] lg:w-[450px] animate-in slide-in-from-right-4 duration-500">
+            <div className="flex-1 flex flex-col bg-white/40 backdrop-blur-md rounded-3xl shadow-sm border border-white/40 overflow-hidden relative" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(232, 234, 237, 1)' }}>
+              <DesktopChatContent
+                messages={messages} liveTranscript={liveTranscript} isSending={isSending}
+                isCameraOn={isCameraOn} chatInput={chatInput} textareaRef={textareaRef}
+                chatEndRef={chatEndRef}
+                onInputChange={handleInputChange}
+                onSend={() => sendChatMessage(false)}
+                onCapture={() => sendChatMessage(true)}
+                onSuggestion={(s) => { setChatInput(s); textareaRef.current?.focus(); }}
+                onVisualize={(q, i) => generateVisual(q, i)}
+                generateVisual={generateVisual}
+                uploadedFile={uploadedFile}
+                fileInputRef={fileInputRef}
+                onFileSelect={handleFileSelect}
+                onFileClear={() => setUploadedFile(null)}
+                isDark={isDark} lang={lang}
+              />
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ── MOBILE: full-screen chat + PiP overlay ──────────────────────────── */}

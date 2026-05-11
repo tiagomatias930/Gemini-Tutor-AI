@@ -70,41 +70,112 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = (props) => {
           statusMessage={props.statusMessage}
         />
 
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
           
-          {/* Chat Area */}
-          <div className="flex-1 flex flex-col overflow-hidden relative z-10">
-            <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
-              <div className="max-w-3xl mx-auto">
+          {/* Main Educational Content Area (Whiteboard & Video) */}
+          <div className="hidden lg:flex flex-1 flex-col overflow-hidden relative" style={{ backgroundColor: c.bg }}>
+            {props.isWhiteboardVisible || props.isCameraOn ? (
+              <div className="flex-1 flex flex-col p-6 gap-6">
+                {props.isCameraOn && (
+                  <motion.div 
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className="relative aspect-video max-h-[300px] rounded-3xl overflow-hidden bg-black shadow-2xl border-2 border-white/10 self-center"
+                  >
+                    <video ref={props.videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                    <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10">
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-[10px] font-bold text-white tracking-widest uppercase">Visual Context Active</span>
+                    </div>
+                    <button 
+                      onClick={props.stopCamera}
+                      className="absolute bottom-4 right-4 p-2.5 rounded-xl bg-red-500/80 hover:bg-red-500 text-white backdrop-blur-md transition-all border border-red-400/20"
+                    >
+                      <CameraOff size={18} />
+                    </button>
+                  </motion.div>
+                )}
+
+                {props.isWhiteboardVisible && (
+                  <motion.div 
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex-1 flex flex-col bg-white/5 rounded-[2rem] border border-white/10 shadow-inner overflow-hidden"
+                  >
+                    <div className="flex-1 relative">
+                      <Whiteboard elements={props.whiteboardElements} isDark={isDark} />
+                    </div>
+                    <div className="p-4 border-t border-white/5 flex justify-between items-center bg-black/20">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">Interactive Whiteboard</span>
+                      </div>
+                      <button 
+                        onClick={() => props.setIsWhiteboardVisible(false)}
+                        className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all hover:bg-white/10 border border-white/10"
+                      >
+                        Close Board
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-8 max-w-lg"
+                >
+                  <div className="relative inline-block">
+                    <div className="absolute inset-0 blur-3xl bg-blue-500/20 rounded-full" />
+                    <img src="./logoGT.png" alt="Logo" className="w-24 h-24 relative opacity-20 grayscale" />
+                  </div>
+                  <div className="space-y-3">
+                    <h2 className="text-2xl font-bold tracking-tight opacity-20">Educational Workspace</h2>
+                    <p className="text-sm opacity-30 leading-relaxed">
+                      Ask Ngola Tutor to visualize a concept, solve a math problem, or explain a diagram to activate this board.
+                    </p>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </div>
+
+          {/* Chat Sidebar Area (Messages & Input) */}
+          <div className="flex-1 lg:w-[400px] lg:flex-none flex flex-col border-l relative z-10" style={{ backgroundColor: c.bgAlt, borderColor: c.border }}>
+            <div className="flex-1 overflow-y-auto px-4 py-6">
+              <div className="w-full">
                 <AnimatePresence initial={false}>
                   {props.messages.length === 0 && !props.liveTranscript && (
                     <motion.div 
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col items-center justify-center py-20 text-center space-y-6"
+                      className="flex flex-col items-center justify-center py-12 text-center space-y-6"
                     >
-                      <div className="w-20 h-20 flex items-center justify-center">
-                        <img src="./logoGT.png" alt="Logo" className="w-12 h-12" />
+                      <div className="w-16 h-16 flex items-center justify-center rounded-2xl bg-blue-500/10 mb-2">
+                        <img src="./logoGT.png" alt="Logo" className="w-10 h-10" />
                       </div>
-                      <div className="space-y-2">
-                        <h2 className="text-xl font-bold" style={{ color: c.text }}>How can I help your studies?</h2>
-                        <p className="text-sm max-w-sm mx-auto" style={{ color: c.textMuted }}>
-                          I can explain complex topics, analyze images of your homework, or even generate diagrams to help you learn.
+                      <div className="space-y-2 px-4">
+                        <h2 className="text-lg font-bold" style={{ color: c.text }}>Ngola Tutor</h2>
+                        <p className="text-xs" style={{ color: c.textMuted }}>
+                          Your AI-powered educational companion. How can I help you study today?
                         </p>
                       </div>
                       
-                      <div className="flex flex-wrap justify-center gap-3 mt-4">
+                      <div className="flex flex-col gap-2 w-full max-w-[280px] mt-4">
                         {[
-                          'Explain how photosynthesis works',
-                          'Describe the DNA structure',
-                          'Solve a math problem from my image'
+                          'Explain photosynthesis',
+                          'DNA structure diagram',
+                          'Solve this math problem'
                         ].map((s, i) => (
                           <button 
                             key={i}
                             onClick={() => { props.setChatInput(s); props.textareaRef.current?.focus(); }}
-                            className="px-4 py-2.5 rounded-xl text-xs font-medium border transition-all hover:scale-105 active:scale-95"
-                            style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'white', borderColor: c.border, color: c.textMuted }}
+                            className="w-full px-4 py-2.5 rounded-xl text-[11px] font-medium border transition-all hover:bg-blue-500/5 text-left flex items-center gap-2"
+                            style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'white', borderColor: c.border, color: c.textMuted }}
                           >
+                            <div className="w-1 h-1 rounded-full bg-blue-500" />
                             {s}
                           </button>
                         ))}
@@ -184,55 +255,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = (props) => {
               textareaRef={props.textareaRef}
             />
           </div>
-
-          {/* Video & Whiteboard Sidebar (Desktop) */}
-          <div className="hidden lg:flex flex-col w-80 border-l overflow-y-auto" style={{ backgroundColor: c.bgAlt, borderColor: c.border }}>
-            {props.isCameraOn && (
-              <motion.div 
-                initial={{ x: 300, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className="p-4"
-              >
-                <div className="relative aspect-video rounded-2xl overflow-hidden bg-black shadow-2xl border-2 border-white/10">
-                  <video ref={props.videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                  <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-black/60 backdrop-blur-md rounded-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[8px] font-bold text-white tracking-widest uppercase">Visual Input Active</span>
-                  </div>
-                </div>
-                <div className="mt-4 p-4 rounded-2xl border bg-black/5 dark:bg-white/5" style={{ borderColor: c.border }}>
-                   <p className="text-xs font-bold uppercase tracking-wider opacity-40 mb-2">Visual Context</p>
-                   <p className="text-[11px]" style={{ color: c.textMuted }}>Gemini is watching and can see what you show to the camera.</p>
-                </div>
-                <button 
-                  onClick={props.stopCamera}
-                  className="mt-4 w-full py-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-medium transition-all hover:bg-red-500/10 text-red-500"
-                  style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}
-                >
-                  <CameraOff size={16} /> Stop Camera
-                </button>
-              </motion.div>
-            )}
-
-            {props.isWhiteboardVisible && (
-              <motion.div 
-                initial={{ x: 300, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className="p-4 flex-1 flex flex-col"
-              >
-                <div className="flex-1 min-h-[280px]">
-                  <Whiteboard elements={props.whiteboardElements} isDark={isDark} />
-                </div>
-                <button 
-                  onClick={() => props.setIsWhiteboardVisible(false)}
-                  className="mt-4 w-full py-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-medium transition-all hover:bg-blue-500/10"
-                  style={{ borderColor: c.border, color: c.textMuted }}
-                >
-                  <Palette size={16} /> Hide Whiteboard
-                </button>
-              </motion.div>
-            )}
-          </div>
+        </div>
         </div>
       </main>
     </div>

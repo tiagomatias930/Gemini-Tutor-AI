@@ -1735,7 +1735,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
 export default function App() {
   const [screen, setScreen] = useState<'landing' | 'tutor'>('landing');
-  const apiKey = process.env.GEMINI_API_KEY || '';
+  const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyDS23b_1a6fWsNT3-HiL4SWiffRga8oECY';
 
   if (screen === 'landing') {
     return <LandingPage onStartLearning={() => setScreen('tutor')} />;

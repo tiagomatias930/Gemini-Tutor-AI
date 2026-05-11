@@ -20,13 +20,16 @@ An AI-powered homework assistant — point your camera, use your voice, or type 
 
 Ngola Tutor is a full-stack web application that acts as a patient AI tutor. It helps students understand problems step by step, without giving direct answers — encouraging them to discover solutions on their own. Features include:
 
+- **3-Column Educational Workspace** — specialized layout with Camera (Left), Interactive Whiteboard (Center), and Chat (Right)
+- **Interactive Whiteboard** — central stage for real-time visual explanations and AI-driven diagrams
 - **Camera Vision** — point your camera at your homework and get guidance
+- **Sign Language Avatar** — pedagogical avatar with gestures for deaf/mute accessibility
 - **Voice Chat** — talk to the tutor using your microphone
-- **Text Chat** — classic text conversation with image upload support
+- **Text Chat** — focused side-panel conversation with image upload support
 - **AI Illustrations** — automatic AI-generated diagrams for visual topics
 - **Multilingual** — responds in the same language the student uses
-- **Dark / Light Theme** — toggle between dark and light mode on the landing page
-- **Language Switcher (EN/PT)** — switch the landing page interface between English and Portuguese
+- **Dark / Light Theme** — toggle between dark and light mode for the entire interface
+- **Language Switcher (EN/PT)** — full interface support for English and Portuguese
 - **Landing Page** — professional marketing page with features, case studies, and about sections
 
 
@@ -214,9 +217,12 @@ This will:
 
 ### Recent Updates
 
+- ✅ **3-Column Layout** — Optimized educational interface with focused areas for input, work, and chat
+- ✅ **Interactive Whiteboard** — AI-driven central workspace for visual step-by-step explanations
+- ✅ **Sign Language Avatar** — Integrated pedagogical avatar with automated gestures for accessibility
 - ✅ **Landing Page** — Professional marketing page with hero section, features, case studies, and about
-- ✅ **Dark / Light Theme** — Theme toggle on the landing page with smooth transitions and persistent preference
-- ✅ **Language Switcher (EN/PT)** — Full internationalization of the landing page interface
+- ✅ **Dark / Light Theme** — Global theme toggle with smooth transitions and persistent preference
+- ✅ **Language Switcher (EN/PT)** — Full internationalization of both landing page and tutor interface
 - ✅ **AI-Generated Illustrations** — Automatic diagram/illustration generation for visual topics using Gemini
 - ✅ **File Upload Support** — Upload PDFs, images, and text files for AI analysis
 - ✅ **Student Context Memory** — In-session memory that adapts to the student's level and learning style
@@ -252,13 +258,16 @@ Key upcoming features:
 
 O Ngola Tutor é uma aplicação web full-stack que funciona como um tutor de IA paciente. Ajuda estudantes a compreender problemas passo a passo, sem dar respostas diretas — incentivando-os a descobrir as soluções por conta própria. Suporta:
 
+- **Workspace Educacional de 3 Colunas** — layout especializado com Câmera (Esquerda), Whiteboard Interativo (Centro) e Chat (Direita)
+- **Whiteboard Interativo** — palco central para explicações visuais em tempo real e diagramas gerados por IA
 - **Visão por Câmera** — aponte a câmera para o dever de casa e receba orientação
+- **Avatar de Linguagem Gestual** — avatar pedagógico com gestos para acessibilidade de surdos/mudos
 - **Chat por Voz** — fale com o tutor usando o microfone
-- **Chat por Texto** — conversa clássica por texto com suporte a upload de imagens
+- **Chat por Texto** — conversa focada em painel lateral com suporte a upload de imagens
 - **Ilustrações por IA** — diagramas gerados automaticamente por IA para tópicos visuais
 - **Multilíngue** — responde no mesmo idioma que o estudante utiliza
-- **Tema Escuro / Claro** — alternância entre modo escuro e claro na landing page
-- **Alternador de Idioma (EN/PT)** — troca da interface da landing page entre Inglês e Português
+- **Tema Escuro / Claro** — alternância entre modo escuro e claro em toda a interface
+- **Alternador de Idioma (EN/PT)** — suporte completo da interface entre Inglês e Português
 - **Landing Page** — página de apresentação profissional com funcionalidades, casos de sucesso e sobre
 
 
@@ -448,9 +457,12 @@ Isso irá:
 
 ### Atualizações Recentes
 
+- ✅ **Layout de 3 Colunas** — Interface educacional otimizada com áreas focadas para entrada, trabalho e chat
+- ✅ **Whiteboard Interativo** — Espaço de trabalho central movido por IA para explicações visuais passo a passo
+- ✅ **Avatar de Linguagem Gestual** — Avatar pedagógico integrado com gestos automáticos para acessibilidade
 - ✅ **Landing Page** — Página de apresentação profissional com secção hero, funcionalidades, casos de sucesso e sobre
-- ✅ **Tema Escuro / Claro** — Alternância de tema na landing page com transições suaves e preferência persistente
-- ✅ **Alternador de Idioma (EN/PT)** — Internacionalização completa da interface da landing page
+- ✅ **Tema Escuro / Claro** — Alternância global de tema com transições suaves e preferência persistente
+- ✅ **Alternador de Idioma (EN/PT)** — Internacionalização completa da landing page e da interface do tutor
 - ✅ **Ilustrações Geradas por IA** — Geração automática de diagramas/ilustrações para tópicos visuais usando Gemini
 - ✅ **Upload de Ficheiros** — Upload de PDFs, imagens e ficheiros de texto para análise por IA
 - ✅ **Memória de Contexto do Aluno** — Memória em sessão que se adapta ao nível e estilo de aprendizagem do aluno

@@ -31,14 +31,12 @@ app.use(express.json({ limit: '100mb' }));
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDS23b_1a6fWsNT3-HiL4SWiffRga8oECY';
+const GEMINI_API_KEY = 'AIzaSyDS23b_1a6fWsNT3-HiL4SWiffRga8oECY';
 const GCP_PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || '';
 
 // Text + reasoning model (supports Google Search grounding)
 const TEXT_MODEL  = 'gemini-2.5-flash';
-// Image generation model — produces images from text prompts.
-// Used to satisfy the hackathon requirement: "leverage... the creative power
-// of video/image generation" alongside the Gemini Live API.
+// Image generation model
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 
 const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Ngola Tutor".

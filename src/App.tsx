@@ -4,7 +4,7 @@ import {
   Mic, MicOff, Sparkles, Camera, CameraOff,
   BookOpen, ArrowRight, Volume2, MessageSquare,
   StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn, Paperclip, FileText,
-  Moon, Sun, Languages, Eye, Edit3, Search
+  Moon, Sun, Eye, Edit3, Search
 } from 'lucide-react';
 import { LandingPage } from './LandingPage';
 import { useTheme } from './contexts/ThemeContext';
@@ -1330,7 +1330,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
           {/* Language Toggle */}
           <button onClick={() => setLang(prev => prev === 'en' ? 'pt' : 'en')} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
-            <Languages size={14} />
+            <span className="text-base">{lang === 'en' ? '🇺🇸' : '🇦🇴'}</span>
             {lang.toUpperCase()}
           </button>
 

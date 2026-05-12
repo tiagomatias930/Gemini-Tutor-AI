@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Close, Language, LightMode, DarkMode } from '@mui/icons-material';
+import { Menu, Close, LightMode, DarkMode } from '@mui/icons-material';
 import { t, type Lang } from '../../i18n';
 import { ThemeColors, Theme } from './types';
 
@@ -52,10 +52,10 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({
 
             {/* Language Toggle */}
             <button onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}
-              style={{ border: `1px solid ${c.border}`, color: c.textMuted, transition: 'all 0.2s' }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium hover:opacity-80">
-              <Language sx={{ fontSize: 14 }} />
-              {lang === 'en' ? 'PT' : 'EN'}
+              style={{ border: `1px solid ${c.border}`, color: c.text, transition: 'all 0.2s' }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold hover:opacity-80 bg-white/5">
+              <span className="text-base">{lang === 'en' ? '🇺🇸' : '🇦🇴'}</span>
+              {lang.toUpperCase()}
             </button>
 
             {/* Theme Toggle */}
@@ -75,8 +75,8 @@ export const LandingNavbar: React.FC<LandingNavbarProps> = ({
           {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
             <button onClick={() => setLang(lang === 'en' ? 'pt' : 'en')}
-              style={{ color: c.textMuted }} className="p-2 rounded-lg">
-              <Language sx={{ fontSize: 20 }} />
+              style={{ color: c.text }} className="p-2 rounded-lg text-xl">
+              {lang === 'en' ? '🇺🇸' : '🇦🇴'}
             </button>
             <button onClick={() => setTheme(isDark ? 'light' : 'dark')}
               style={{ color: c.textMuted }} className="p-2 rounded-lg">

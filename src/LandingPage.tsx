@@ -82,9 +82,9 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
              <span className="text-xl font-bold">
-               <span className="text-[#4285f4]">G</span><span className="text-[#ea4335]">e</span>
-               <span className="text-[#fbbc05]">m</span><span className="text-[#4285f4]">i</span>
-               <span className="text-[#34a853]">n</span><span className="text-[#ea4335]">i</span>
+               <span className="text-[#4285f4]">N</span><span className="text-[#ea4335]">g</span>
+               <span className="text-[#fbbc05]">o</span><span className="text-[#4285f4]">l</span>
+               <span className="text-[#34a853]">a</span><span className="text-[#ea4335]"> </span>
                <span style={{ color: c.text }}> Tutor</span>
              </span>
           </div>

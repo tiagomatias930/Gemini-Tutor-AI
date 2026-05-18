@@ -32,18 +32,25 @@ export const Whiteboard: React.FC<WhiteboardProps> = memo(({ elements, isDark })
     }
 
     const exElements = elements.map((el) => {
-      const color = el.color || (isDark ? '#4285f4' : '#1a73e8');
+      let color = el.color || (isDark ? '#4285f4' : '#1a73e8');
+      if (color === '#hex' || !/^#(?:[0-9a-fA-F]{3}){1,2}$/.test(color)) {
+        color = isDark ? '#4285f4' : '#1a73e8';
+      }
       const common = {
-        id: el.id,
-        x: el.x,
-        y: el.y,
+        id: String(el.id),
+        x: Number(el.x) || 100,
+        y: Number(el.y) || 100,
+        angle: 0,
         strokeColor: color,
         backgroundColor: "transparent",
+        fillStyle: "hachure" as const,
         strokeWidth: 2,
+        strokeStyle: "solid" as const,
         roughness: 1,
+        opacity: 100,
         seed: Math.floor(Math.random() * 100000),
-        version: 1,
-        versionNonce: Math.floor(Math.random() * 100000),
+        version: Date.now(),
+        versionNonce: Date.now(),
         isDeleted: false,
         groupIds: [],
         frameId: null,
@@ -58,15 +65,15 @@ export const Whiteboard: React.FC<WhiteboardProps> = memo(({ elements, isDark })
           return {
             ...common,
             type: "ellipse",
-            width: el.width || 100,
-            height: el.width || 100,
+            width: Number(el.width) || 100,
+            height: Number(el.width) || 100,
           };
         case 'square':
           return {
             ...common,
             type: "rectangle",
-            width: el.width || 100,
-            height: el.height || 100,
+            width: Number(el.width) || 100,
+            height: Number(el.height) || 100,
           };
         case 'text':
           return {
@@ -77,6 +84,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = memo(({ elements, isDark })
             fontFamily: 1,
             textAlign: "center" as const,
             verticalAlign: "middle" as const,
+            baseline: 15,
             width: (el.content?.length || 10) * 12,
             height: 30,
           };
@@ -84,9 +92,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = memo(({ elements, isDark })
           return {
             ...common,
             type: "arrow",
-            width: el.width || 100,
-            height: el.height || 100,
-            points: [[0, 0], [el.width || 100, el.height || 100]],
+            width: Number(el.width) || 100,
+            height: Number(el.height) || 100,
+            points: [[0, 0], [Number(el.width) || 100, Number(el.height) || 100]],
             startArrowhead: null,
             endArrowhead: "arrow",
           };
@@ -94,9 +102,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = memo(({ elements, isDark })
           return {
             ...common,
             type: "line",
-            width: el.width || 100,
-            height: el.height || 100,
-            points: [[0, 0], [el.width || 100, el.height || 100]],
+            width: Number(el.width) || 100,
+            height: Number(el.height) || 100,
+            points: [[0, 0], [Number(el.width) || 100, Number(el.height) || 100]],
           };
         default:
           return null;

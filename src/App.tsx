@@ -33,6 +33,9 @@ const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"N
 "- **Seamless Integration**: Use text, voice, vision, and whiteboard simultaneously to create a holistic learning experience.\n" +
 "- **Adaptive Accessibility**: The interface transforms based on 'isDeafMode' (visual-first) or 'isVisionAssist' (audio-first).\n" +
 "- **Pedagogical Closure**: Always end concepts with a check for understanding and update the '[GT_MEMORY_UPDATE]' tag.\n\n" +
+"## INTERACTIVE WHITEBOARD COMMANDS\n" +
+"You can draw on the student's whiteboard to explain concepts. Use the following tag in your response whenever a visual aid would help:\n" +
+"`[GT_WHITEBOARD_COMMAND: {\"id\": \"unique_id\", \"type\": \"text|circle|square|arrow|line\", \"x\": 100, \"y\": 100, \"content\": \"label\", \"width\": 50, \"height\": 50, \"color\": \"#hex\"}]`\n\n" +
 "## FORMATTING & TONE\n" +
 "Concise, encouraging, and deeply personalized. You are not just a tool; you are a mentor.";
 
@@ -562,20 +565,57 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       }
       // Whiteboard updates
       if (lastMsg.text.includes('[GT_WHITEBOARD_COMMAND:')) {
-        const matches = lastMsg.text.matchAll(/\[GT_WHITEBOARD_COMMAND:\s*({.*?})\]/g);
-        const newElements = [...whiteboardElements];
-        let changed = false;
-        for (const match of matches) {
-          try {
-            const el = JSON.parse(match[1]);
-            const idx = newElements.findIndex(existing => existing.id === el.id);
-            if (idx > -1) newElements[idx] = el;
-            else newElements.push(el);
-            changed = true;
-          } catch (e) { console.error('Whiteboard parse error', e); }
+        const parsedElements: any[] = [];
+        const parts = lastMsg.text.split('[GT_WHITEBOARD_COMMAND:');
+        for (let i = 1; i < parts.length; i++) {
+          const part = parts[i];
+          const firstBrace = part.indexOf('{');
+          if (firstBrace === -1) continue;
+          let braceCount = 0;
+          let lastBrace = -1;
+          let inString = false;
+          let escape = false;
+          for (let j = firstBrace; j < part.length; j++) {
+            const char = part[j];
+            if (escape) { escape = false; continue; }
+            if (char === '\\') { escape = true; continue; }
+            if (char === '"') { inString = !inString; continue; }
+            if (!inString) {
+              if (char === '{') braceCount++;
+              if (char === '}') braceCount--;
+              if (braceCount === 0) {
+                lastBrace = j;
+                break;
+              }
+            }
+          }
+          if (lastBrace !== -1) {
+            try {
+              const rawStr = part.substring(firstBrace, lastBrace + 1);
+              let repaired = rawStr.trim();
+              repaired = repaired.replace(/'([^'\n]*)'/g, '"$1"');
+              repaired = repaired.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+              repaired = repaired.replace(/,\s*([\]}])/g, '$1');
+              parsedElements.push(JSON.parse(repaired));
+            } catch (e) { console.error('Whiteboard parse error', e); }
+          }
         }
-        if (changed) {
-          setWhiteboardElements(newElements);
+        if (parsedElements.length > 0) {
+          setWhiteboardElements(prev => {
+            const newElements = [...prev];
+            let changed = false;
+            for (const el of parsedElements) {
+              const idx = newElements.findIndex(existing => existing.id === el.id);
+              if (idx > -1) {
+                newElements[idx] = el;
+                changed = true;
+              } else {
+                newElements.push(el);
+                changed = true;
+              }
+            }
+            return changed ? newElements : prev;
+          });
         }
       }
 

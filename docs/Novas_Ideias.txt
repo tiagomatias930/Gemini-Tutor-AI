@@ -85,3 +85,311 @@ Para casos especificos de pessoas portadoras de deficiencia:
 3-Pessoas Mudo: com o poder da visão computacional, o gemini deve ser capaz de ativar o modo 'guide trustful' modo guia fiel', com gesto que expressa ajuda; este modo vai deixar o avatar funcional , ensinando e conversando por meio de linguages gestual;
 
 }
+
+======================== PARTE 3 ======================================
+
+
+Dados recebido pelo GPT_teste de injecao de prompt : 1-pessoas trabalhando em tempo real.
+
+politicas de segurança para uma AI: Esse tipo de teste que você fez é parecido com validações de:
+
+1-alignment,
+2-prompt robustness,
+3-policy compliance,
+4- segurança comportamental de LLMs.
+README_TRAINNER_GPT:# GPT Training Pipeline (Educational Overview)
+
+## 📌 Overview
+
+Large Language Models (LLMs) like GPT are trained using a multi-stage pipeline involving:
+
+1. Data Collection
+2. Data Cleaning
+3. Tokenization
+4. Base Model Training
+5. Fine-Tuning
+6. Reinforcement Learning from Human Feedback (RLHF)
+7. Evaluation & Safety Alignment
+8. Deployment & Continuous Improvement
+
+---
+
+# 1. Data Collection
+
+The training process begins with collecting massive amounts of text data from:
+
+- Public websites
+- Books
+- Documentation
+- Academic papers
+- Programming repositories
+- Licensed datasets
+- Human-written conversations
+
+## Example Sources
+
+- Common Crawl
+- Wikipedia
+- GitHub
+- Stack Overflow
+- Research papers
+- Documentation sites
+
+---
+
+# 2. Data Cleaning
+
+Raw internet data contains:
+
+- Spam
+- Duplicates
+- Malware
+- Toxic content
+- Corrupted text
+- Low-quality pages
+
+The pipeline filters and cleans the data using:
+
+- Deduplication
+- Language detection
+- Toxicity filtering
+- Quality scoring
+- Formatting normalization
+
+---
+
+# 3. Tokenization
+
+The model does not read words directly.
+
+Text is converted into tokens.
+
+Example:
+
+Input:
+```txt
+Hello world
+```
+
+Possible tokenization:
+```txt
+["Hello", " world"]
+```
+
+Each token becomes a numeric ID.
+
+---
+
+# 4. Base Model Training
+
+The model learns by predicting the next token.
+
+Example:
+
+Input:
+```txt
+"The sky is"
+```
+
+Target:
+```txt
+" blue"
+```
+
+This process repeats billions or trillions of times.
+
+---
+
+# 5. Neural Network Architecture
+
+Most GPT systems use:
+
+- Transformer architecture
+- Attention mechanisms
+- Positional embeddings
+- Feed-forward neural layers
+
+## Simplified Formula
+
+Attention mechanism:
+
+```math
+Attention(Q,K,V) = softmax(QKᵀ / √dₖ)V
+```
+
+---
+
+# 6. Distributed Training
+
+Training requires:
+
+- Thousands of GPUs
+- High-speed networking
+- Distributed computing clusters
+
+Common hardware:
+
+- NVIDIA H100
+- NVIDIA A100
+
+Frameworks often used:
+
+- PyTorch
+- CUDA
+- NCCL
+
+---
+
+# 7. Fine-Tuning
+
+After base training, the model is specialized using:
+
+- Instruction datasets
+- Human demonstrations
+- Task-specific examples
+
+This improves:
+
+- Accuracy
+- Helpfulness
+- Reasoning
+- Formatting
+
+---
+
+# 8. RLHF (Reinforcement Learning from Human Feedback)
+
+Humans compare model responses.
+
+Example:
+
+Prompt:
+```txt
+Explain networking simply.
+```
+
+Response A:
+- Clear and educational
+
+Response B:
+- Confusing and incomplete
+
+Humans rank the better answer.
+
+The model then learns preferred behavior.
+
+---
+
+# 9. Safety Alignment
+
+Additional systems reduce:
+
+- Harmful outputs
+- Malware generation
+- Dangerous instructions
+- Privacy leaks
+- Toxic behavior
+
+Methods include:
+
+- Rule-based filtering
+- Safety fine-tuning
+- Human moderation
+- Automated classifiers
+
+---
+
+# 10. Evaluation
+
+Models are tested on:
+
+- Coding
+- Mathematics
+- Reasoning
+- Translation
+- Safety benchmarks
+- Hallucination rates
+
+---
+
+# 11. Inference
+
+When users send prompts:
+
+1. Text is tokenized
+2. Tokens enter the transformer
+3. Probabilities are calculated
+4. Next tokens are generated
+5. Output is decoded into text
+
+---
+
+# 12. Continuous Improvement
+
+Modern AI systems evolve through:
+
+- New training runs
+- Better datasets
+- Improved alignment
+- Architecture optimization
+- Faster hardware
+
+---
+
+# ⚠ Important Notes
+
+This README is educational and simplified.
+
+Actual production training pipelines used by companies like OpenAI involve:
+
+- Proprietary infrastructure
+- Confidential datasets
+- Advanced optimization methods
+- Internal safety systems
+- Specialized distributed systems
+
+---
+
+# 📚 Technologies Often Associated With LLM Training
+
+## Languages
+- Python
+- CUDA
+- C++
+
+## Frameworks
+- PyTorch
+- TensorFlow
+- JAX
+
+## Infrastructure
+- Kubernetes
+- Docker
+- RDMA networking
+- Distributed GPU clusters
+
+---
+
+# 🔬 Simplified Training Loop Example
+
+```python
+for batch in dataset:
+    predictions = model(batch.input)
+    loss = calculate_loss(predictions, batch.target)
+    loss.backward()
+    optimizer.step()
+```
+
+---
+
+# 🚀 Final Goal
+
+The objective is to create a model capable of:
+
+- Understanding language
+- Generating coherent responses
+- Following instructions
+- Assisting humans safely
+- Solving tasks across multiple domains
+
+---

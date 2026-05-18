@@ -23,7 +23,7 @@ import { Firestore } from '@google-cloud/firestore';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const app  = express();
+const app = express();
 const PORT = parseInt(process.env.PORT || '8080');
 
 app.use(cors({ origin: true }));
@@ -31,11 +31,11 @@ app.use(express.json({ limit: '100mb' }));
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDS23b_1a6fWsNT3-HiL4SWiffRga8oECY';
-const GCP_PROJECT    = process.env.GOOGLE_CLOUD_PROJECT || '';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ' ';
+const GCP_PROJECT = process.env.GOOGLE_CLOUD_PROJECT || '';
 
 // Text + reasoning model (supports Google Search grounding)
-const TEXT_MODEL  = 'gemini-2.5-flash';
+const TEXT_MODEL = 'gemini-2.5-flash';
 // Image generation model — produces images from text prompts.
 // Used to satisfy the hackathon requirement: "leverage... the creative power
 // of video/image generation" alongside the Gemini Live API.
@@ -221,13 +221,13 @@ async function generateImage(concept: string, tutorContext?: string): Promise<Ge
     });
 
     let imageBase64 = '';
-    let mimeType    = 'image/png';
-    let caption     = '';
+    let mimeType = 'image/png';
+    let caption = '';
 
     for (const part of (response.candidates?.[0]?.content?.parts || [])) {
       if (part.inlineData?.mimeType?.startsWith('image/')) {
         imageBase64 = part.inlineData.data || '';
-        mimeType    = part.inlineData.mimeType;
+        mimeType = part.inlineData.mimeType;
       } else if (part.text) {
         caption += part.text;
       }
@@ -284,7 +284,7 @@ app.post('/api/chat', async (req, res) => {
       effectiveInstruction += lines.join('\n');
     }
 
-    const userText   = message || (fileData ? `Analisa este ficheiro: ${fileData.name}` : 'Please analyze this image and help me understand it.');
+    const userText = message || (fileData ? `Analisa este ficheiro: ${fileData.name}` : 'Please analyze this image and help me understand it.');
     const textResponse = await generateText(userText, image, chatHistory, fileData, effectiveInstruction);
 
     // Auto-detect if a generated image would help understanding.

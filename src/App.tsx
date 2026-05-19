@@ -44,6 +44,56 @@ const speakWithVLibras = (text: string) => {
   }, 500);
 };
 
+// ─── Localized Friendly Error Handler ──────────────────────────────────────────
+const formatFriendlyError = (errorMsg: string, lang: Lang): string => {
+  // If the error message is a raw JSON string from Google Cloud / Gemini API
+  let parsedMsg = errorMsg;
+  try {
+    if (errorMsg.trim().startsWith('{') || errorMsg.trim().startsWith('[')) {
+      const parsed = JSON.parse(errorMsg);
+      parsedMsg = parsed.error?.message || parsed.message || errorMsg;
+    }
+  } catch {
+    // Keep as string if parsing fails
+  }
+
+  const lower = parsedMsg.toLowerCase();
+
+  // 1. High Demand / Rate limit (503 UNAVAILABLE, 429 quota, etc.)
+  if (lower.includes('experiencing high demand') || lower.includes('unavailable') || lower.includes('503') || lower.includes('rate limit') || lower.includes('quota') || lower.includes('capacity')) {
+    if (lang === 'pt') {
+      return "Olá! O meu servidor está a receber muitas visitas de outros estudantes neste momento. 🚀 É um pico temporário! Por favor, aguarde um minutinho e tente enviar a mensagem novamente. Obrigado pela paciência!";
+    } else {
+      return "Hello! My server is currently experiencing a high volume of requests from other students. 🚀 This is usually temporary! Please wait a minute and try again. Thank you for your patience!";
+    }
+  }
+
+  // 2. Network offline / connection issues
+  if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('offline') || lower.includes('connection')) {
+    if (lang === 'pt') {
+      return "Parece que estamos com um problema de ligação à internet. 🌐 Por favor, verifique a sua ligação e tente novamente.";
+    } else {
+      return "It looks like we are experiencing a connection issue. 🌐 Please check your internet connection and try again.";
+    }
+  }
+
+  // 3. API Key issues
+  if (lower.includes('api key') || lower.includes('invalid key') || lower.includes('unauthorized') || lower.includes('403')) {
+    if (lang === 'pt') {
+      return "Ops! Ocorreu um problema de autorização com a chave da API do Gemini. 🔑 Por favor, verifique se a chave de acesso está configurada corretamente.";
+    } else {
+      return "Oops! An authorization problem occurred with the Gemini API key. 🔑 Please check that your access key is configured correctly.";
+    }
+  }
+
+  // 4. Default fallback friendly error
+  if (lang === 'pt') {
+    return `Desculpe, ocorreu um pequeno contratempo no processamento: ${parsedMsg}. Vamos tentar de novo?`;
+  } else {
+    return `Sorry, we hit a small bump in the road: ${parsedMsg}. Shall we try again?`;
+  }
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"Ngola Tutor\".\n\n" +
@@ -850,8 +900,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setIsCameraOn(true);
-    } catch { setError('Could not access camera. Please check permissions.'); }
-  }, []);
+    } catch {
+      setError(
+        lang === 'pt'
+          ? 'Não foi possível aceder à câmara. 📷 Por favor, verifique as permissões de acesso no seu navegador.'
+          : 'Could not access camera. 📷 Please check browser access permissions.'
+      );
+    }
+  }, [lang]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -1033,8 +1089,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         }, 100);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to send message');
-      setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, something went wrong: ${err.message}`, source: 'text' }]);
+      const friendlyError = formatFriendlyError(err.message || 'Failed to send message', lang);
+      setError(friendlyError);
+      setMessages(prev => [...prev, { role: 'assistant', text: friendlyError, source: 'text' }]);
     } finally { setIsSending(false); }
   }, [chatInput, captureFrame, messages, apiKey, sessionId, resetTextarea, generateVisual, uploadedFile]);
 
@@ -1275,7 +1332,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             flushAudioQueue();
             setModelSpeaking(false);
             setLiveTranscript('');
-            setError(`Connection error: ${err?.message || 'Unknown error'}`);
+            const friendly = formatFriendlyError(err?.message || 'Unknown error', lang);
+            setError(friendly);
             setIsConnecting(false);
           },
 
@@ -1334,7 +1392,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       startSendingFrames(session);
     } catch (err: any) {
       console.error('Session start error:', err);
-      setError(`Failed to connect: ${err?.message || 'Unknown error'}`);
+      const friendly = formatFriendlyError(err?.message || 'Unknown error', lang);
+      setError(friendly);
       setIsConnecting(false);
       setStatusMessage('Connection failed');
     }
@@ -1529,24 +1588,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             </div>
           )}
 
-          <div className="mt-auto space-y-4">
-            {error && (
-              <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl text-[#c5221f] text-xs text-center">
-                {error}
-              </div>
-            )}
-
             <div className="flex flex-col gap-3">
               <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
                 className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm
                             transition-all shadow-xl hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-[#ea4335] text-white shadow-red-500/20' : 'bg-[#1a73e8] text-white shadow-blue-500/20'
                   }`}>
-                {isConnected ? <><MicOff size={18} /> Stop Session</>
+                {isConnected ? <><MicOff size={18} /> Interromper a sessão</>
                   : isConnecting ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg> Connecting...</>
-                    : <><Mic size={18} /> Start Tutoring</>}
+                    : <><Mic size={18} /> Iniciar mentoria</>}
               </button>
 
               {isVisionAssist && isConnected && (

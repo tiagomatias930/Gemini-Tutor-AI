@@ -9,35 +9,34 @@ import {
 import { LandingPage } from './LandingPage';
 import { useTheme } from './contexts/ThemeContext';
 import { t, type Lang } from './i18n';
-import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
 import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"Ngola Tutor\".\n\n" +
-"## LANGUAGE RULES (HIGHEST PRIORITY)\n" +
-"- DETECT the language of the student's FIRST message and use THAT language for ALL your responses.\n" +
-"- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.\n\n" +
-"## STUDENT CONTEXTUAL MEMORY\n" +
-"- **Persistent Profile**: Access history from past sessions to personalize explanations.\n" +
-"- **Progress Tags**: At the end of a session or key concept, include: '[GT_MEMORY_UPDATE: <summary of student strengths/struggles>]'.\n\n" +
-"## TEACHING METHODOLOGY (SOCRATIC & STEP-BY-STEP)\n" +
-"- **GUIDE, DON'T TELL**: Use questions and hints. Never give direct answers.\n" +
-"- **Step-by-Step**: Break complex problems into manageable sub-tasks.\n" +
-"- **Chain of Thought**: Internally reason before explaining.\n\n" +
-"## ACCESSIBILITY & INCLUSION\n" +
-"- **Blind Mode ('Light in Dark')**: Act as \"Digital Eyes\". Use detailed clock-face spatial descriptions (e.g., \"There is a pencil at 2 o'clock\").\n" +
-"- **Intelligent Alerts**: If the camera is on, watch for student fatigue (yawning, looking away) or hazards. Warn about safety and suggest breaks.\n" +
-"- **Vision Flow**: Scan the environment, describe positions relative to the student, and adjust pace based on their emotional state.\n\n" +
-"## CONSOLIDATED MULTIMODAL EXPERIENCE (PHASE 4)\n" +
-"- **Seamless Integration**: Use text, voice, vision, and whiteboard simultaneously to create a holistic learning experience.\n" +
-"- **Adaptive Accessibility**: The interface transforms based on 'isDeafMode' (visual-first) or 'isVisionAssist' (audio-first).\n" +
-"- **Pedagogical Closure**: Always end concepts with a check for understanding and update the '[GT_MEMORY_UPDATE]' tag.\n\n" +
-"## INTERACTIVE WHITEBOARD COMMANDS\n" +
-"You can draw on the student's whiteboard to explain concepts. Use the following tag in your response whenever a visual aid would help:\n" +
-"`[GT_WHITEBOARD_COMMAND: {\"id\": \"unique_id\", \"type\": \"text|circle|square|arrow|line\", \"x\": 100, \"y\": 100, \"content\": \"label\", \"width\": 50, \"height\": 50, \"color\": \"#hex\"}]`\n\n" +
-"## FORMATTING & TONE\n" +
-"Concise, encouraging, and deeply personalized. You are not just a tool; you are a mentor.";
+  "## LANGUAGE RULES (HIGHEST PRIORITY)\n" +
+  "- DETECT the language of the student's FIRST message and use THAT language for ALL your responses.\n" +
+  "- If Portuguese and Spanish seem ambiguous, ALWAYS prefer Portuguese.\n\n" +
+  "## STUDENT CONTEXTUAL MEMORY\n" +
+  "- **Persistent Profile**: Access history from past sessions to personalize explanations.\n" +
+  "- **Progress Tags**: At the end of a session or key concept, include: '[GT_MEMORY_UPDATE: <summary of student strengths/struggles>]'.\n\n" +
+  "## TEACHING METHODOLOGY (SOCRATIC & STEP-BY-STEP)\n" +
+  "- **GUIDE, DON'T TELL**: Use questions and hints. Never give direct answers.\n" +
+  "- **Step-by-Step**: Break complex problems into manageable sub-tasks.\n" +
+  "- **Chain of Thought**: Internally reason before explaining.\n\n" +
+  "## ACCESSIBILITY & INCLUSION\n" +
+  "- **Blind Mode ('Light in Dark')**: Act as \"Digital Eyes\". Use detailed clock-face spatial descriptions (e.g., \"There is a pencil at 2 o'clock\").\n" +
+  "- **Intelligent Alerts**: If the camera is on, watch for student fatigue (yawning, looking away) or hazards. Warn about safety and suggest breaks.\n" +
+  "- **Vision Flow**: Scan the environment, describe positions relative to the student, and adjust pace based on their emotional state.\n\n" +
+  "## CONSOLIDATED MULTIMODAL EXPERIENCE (PHASE 4)\n" +
+  "- **Seamless Integration**: Use text, voice, vision, and whiteboard simultaneously to create a holistic learning experience.\n" +
+  "- **Adaptive Accessibility**: The interface transforms based on 'isDeafMode' (visual-first) or 'isVisionAssist' (audio-first).\n" +
+  "- **Pedagogical Closure**: Always end concepts with a check for understanding and update the '[GT_MEMORY_UPDATE]' tag.\n\n" +
+  "## INTERACTIVE WHITEBOARD COMMANDS\n" +
+  "You can draw on the student's whiteboard to explain concepts. Use the following tag in your response whenever a visual aid would help:\n" +
+  "`[GT_WHITEBOARD_COMMAND: {\"id\": \"unique_id\", \"type\": \"text|circle|square|arrow|line\", \"x\": 100, \"y\": 100, \"content\": \"label\", \"width\": 50, \"height\": 50, \"color\": \"#hex\"}]`\n\n" +
+  "## FORMATTING & TONE\n" +
+  "Concise, encouraging, and deeply personalized. You are not just a tool; you are a mentor.";
 
 // Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
 const TEXT_MODEL = 'gemini-2.5-flash';
@@ -277,9 +276,9 @@ function ChatMessages({
               <button key={s.text} onClick={() => onSuggestion(s.text)}
                 className={`text-left px-5 py-4 rounded-2xl border backdrop-blur-md 
                            text-sm hover:scale-[1.02] active:scale-[0.98]
-                           transition-all flex items-center gap-3 shadow-sm ${isDark 
-                             ? 'border-white/10 bg-white/5 text-gray-200 hover:bg-white/10' 
-                             : 'border-white/60 bg-white/30 text-[#3c4043] hover:bg-white/60 shadow-black/5'}`}>
+                           transition-all flex items-center gap-3 shadow-sm ${isDark
+                    ? 'border-white/10 bg-white/5 text-gray-200 hover:bg-white/10'
+                    : 'border-white/60 bg-white/30 text-[#3c4043] hover:bg-white/60 shadow-black/5'}`}>
                 <span className="p-1.5 rounded-lg bg-purple-500/10 text-[#9b72cb]">{s.icon}</span>
                 {s.text}
               </button>
@@ -469,7 +468,7 @@ function DesktopChatContent({
                 </button>
               )}
             </div>
-            
+
             <div className="flex items-center gap-2">
               <span className={`text-[10px] font-bold uppercase tracking-widest opacity-0 group-focus-within:opacity-100 transition-opacity mr-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                 {t(lang, 'chatPressEnter')}
@@ -484,9 +483,9 @@ function DesktopChatContent({
           </div>
         </div>
         <div className="mt-4 flex items-center justify-center gap-4 opacity-40">
-           <div className={`h-[1px] flex-1 ${isDark ? 'bg-white/10' : 'bg-gray-300'}`} />
-           <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t(lang, 'chatEnterprise')}</span>
-           <div className={`h-[1px] flex-1 ${isDark ? 'bg-white/10' : 'bg-gray-300'}`} />
+          <div className={`h-[1px] flex-1 ${isDark ? 'bg-white/10' : 'bg-gray-300'}`} />
+          <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t(lang, 'chatEnterprise')}</span>
+          <div className={`h-[1px] flex-1 ${isDark ? 'bg-white/10' : 'bg-gray-300'}`} />
         </div>
       </div>
     </>
@@ -524,7 +523,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lp_lang') as Lang) || 'en');
   const [studentMemory, setStudentMemory] = useState<string>(() => localStorage.getItem('gt_student_memory') || 'No previous history.');
   const [isDeafMode, setIsDeafMode] = useState(false);
-  const [avatarGesture, setAvatarGesture] = useState('idle');
   const [whiteboardElements, setWhiteboardElements] = useState<WhiteboardElement[]>([]);
   const [isChatVisible, setIsChatVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -548,11 +546,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     localStorage.setItem('lp_lang', lang);
   }, [lang]);
 
-  useEffect(() => {
-    if (isModelSpeaking) setAvatarGesture('explaining');
-    else if (isConnected) setAvatarGesture('listening');
-    else setAvatarGesture('idle');
-  }, [isModelSpeaking, isConnected]);
 
   // Monitor assistant messages for memory and whiteboard updates
   useEffect(() => {
@@ -617,24 +610,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             return changed ? newElements : prev;
           });
         }
-      }
-
-      // Gesture detection for Sign Language Avatar
-      const text = lastMsg.text.toLowerCase();
-      if (text.includes('certo') || text.includes('correto') || text.includes('parabéns') || text.includes('sim')) {
-        setAvatarGesture('confirming');
-        setTimeout(() => setAvatarGesture('idle'), 3000);
-      } else if (text.includes('atenção') || text.includes('cuidado') || text.includes('erro') || text.includes('perigo')) {
-        setAvatarGesture('warning');
-        setTimeout(() => setAvatarGesture('idle'), 4000);
-      } else if (text.includes('explica') || text.includes('ensina') || text.includes('mostra')) {
-        setAvatarGesture('explaining');
-      } else if (text.includes('penso') || text.includes('analisando') || text.includes('pergunta')) {
-        setAvatarGesture('thinking');
-        setTimeout(() => setAvatarGesture('idle'), 5000);
-      } else if (text.includes('olha') || text.includes('vê') || text.includes('aponta')) {
-        setAvatarGesture('pointing');
-        setTimeout(() => setAvatarGesture('idle'), 3000);
       }
     }
   }, [messages]);
@@ -724,7 +699,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const buildSystemInstruction = useCallback((msgs: ChatMessage[], ctx?: StudentContext) => {
     let instruction = TUTOR_SYSTEM_INSTRUCTION;
     instruction += `\n\n## STUDENT PROGRESS MEMORY (LONG-TERM)\n${studentMemory}\n`;
-    
+
     // Pass current accessibility states
     instruction += `\n## CURRENT MODE STATUS\n- Vision Assist (Light in Dark): ${isVisionAssist ? 'ACTIVE' : 'OFF'}\n- Avatar (Guide Trustful): ${isDeafMode ? 'ACTIVE' : 'OFF'}\n`;
 
@@ -1324,11 +1299,11 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
   return (
     <div className={`h-dvh flex flex-col overflow-hidden relative select-none md:select-auto transition-colors duration-500`}
-      style={{ 
+      style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         backgroundColor: isDark ? '#0a0b10' : '#fdfdff'
       }}>
-      
+
       {/* Dynamic Mesh Background */}
       <div className="absolute inset-0 pointer-events-none opacity-40 overflow-hidden z-0">
         <div className={`absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full blur-[120px] animate-pulse ${isDark ? 'bg-blue-900/20' : 'bg-blue-200/50'}`} />
@@ -1372,12 +1347,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           <button onClick={() => setLang(prev => prev === 'en' ? 'pt' : 'en')} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
             <span className="text-base">{lang === 'en' ? '🇺🇸' : '🇦🇴'}</span>
             {lang.toUpperCase()}
-          </button>
-
-          {/* Deaf Mode Toggle */}
-          <button onClick={() => setIsDeafMode(!isDeafMode)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDeafMode ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
-            <MessageSquare size={14} />
-            {isDeafMode ? 'AVATAR ON' : 'AVATAR OFF'}
           </button>
 
           {/* Vision Assist Toggle */}
@@ -1443,7 +1412,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 <span className="text-white text-[10px] font-bold uppercase tracking-wider">Tutor Speaking</span>
               </div>
             )}
-            
+
             {/* Camera Toggle Button Overlay */}
             <div className="absolute bottom-4 right-4">
               <button onClick={isCameraOn ? stopCamera : startCamera}
@@ -1472,12 +1441,12 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           )}
 
           {!isDeafMode && isVisionAssist && (
-             <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 animate-pulse">
-                <h4 className="text-[11px] font-black text-amber-600 uppercase mb-2 flex items-center gap-2">
-                  <Search size={14} /> Digital Eyes Active
-                </h4>
-                <p className="text-[10px] text-amber-700/80 leading-relaxed font-medium">Ngola is narrating your environment and watching for safety/fatigue.</p>
-             </div>
+            <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 animate-pulse">
+              <h4 className="text-[11px] font-black text-amber-600 uppercase mb-2 flex items-center gap-2">
+                <Search size={14} /> Digital Eyes Active
+              </h4>
+              <p className="text-[10px] text-amber-700/80 leading-relaxed font-medium">Ngola is narrating your environment and watching for safety/fatigue.</p>
+            </div>
           )}
 
           <div className="mt-auto space-y-4">
@@ -1486,7 +1455,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 {error}
               </div>
             )}
-            
+
             <div className="flex flex-col gap-3">
               <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
                 className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm
@@ -1509,7 +1478,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 </button>
               )}
             </div>
-            
+
             <p className="text-[10px] font-bold uppercase tracking-widest text-center opacity-40">{statusMessage}</p>
           </div>
         </div>
@@ -1640,7 +1609,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           {/* Status pill */}
           {isConnected && (
             <div className="flex justify-center pt-1.5">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium transition-colors ${isModelSpeaking 
+              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium transition-colors ${isModelSpeaking
                 ? (isDark ? 'text-blue-400 bg-blue-500/20' : 'text-[#1a73e8] bg-[#e8f0fe]')
                 : (isDark ? 'text-gray-400 bg-white/5' : 'text-[#9aa0a6] bg-[#f1f3f4]')
                 }`}>
@@ -1667,18 +1636,18 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               </div>
             )}
             <div className={`flex items-end gap-2 backdrop-blur-md rounded-[28px] px-2.5 py-2.5
-                            border transition-all duration-300 ${isDark 
-                              ? 'bg-white/5 border-white/10 shadow-black/20 focus-within:bg-white/10' 
-                              : 'bg-white/80 border-white shadow-xl shadow-black/5 focus-within:bg-white focus-within:shadow-2xl focus-within:shadow-blue-500/10'}`}>
+                            border transition-all duration-300 ${isDark
+                ? 'bg-white/5 border-white/10 shadow-black/20 focus-within:bg-white/10'
+                : 'bg-white/80 border-white shadow-xl shadow-black/5 focus-within:bg-white focus-within:shadow-2xl focus-within:shadow-blue-500/10'}`}>
 
               {/* Camera button — left of input */}
-                className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
+              className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
                             transition-all active:scale-90 mb-0.5 ${isCameraOn
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                    : isDark ? 'text-gray-400 hover:bg-white/5' : 'text-gray-500 hover:bg-gray-100'
-                  }`}
-                title={isCameraOn ? 'Camera on' : 'Turn on camera'}
-                {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                  : isDark ? 'text-gray-400 hover:bg-white/5' : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              title={isCameraOn ? 'Camera on' : 'Turn on camera'}
+              {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
 
               <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
                 className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
@@ -1749,7 +1718,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 {isModelSpeaking && (
                   <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent animate-pulse" />
                 )}
-                
+
                 {isConnected
                   ? <MicOff size={28} />
                   : isConnecting

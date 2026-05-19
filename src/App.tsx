@@ -12,6 +12,38 @@ import { t, type Lang } from './i18n';
 import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
 import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
 
+// ─── VLibras Integration Helper ────────────────────────────────────────────────
+const speakWithVLibras = (text: string) => {
+  // Clean up code tags/tokens before sending to VLibras
+  const cleanText = text.replace(/\[GT_WHITEBOARD_COMMAND:[^\]]+\]/g, '').trim();
+  if (!cleanText) return;
+
+  // 1. Find the VLibras access button and click it to open/activate the widget if not already active
+  const accessButton = document.querySelector('[vw-access-button]');
+  if (accessButton && !accessButton.classList.contains('active')) {
+    (accessButton as HTMLElement).click();
+  }
+
+  // 2. Safely call the window.plugin.translate method with polling to handle loading states
+  let attempts = 0;
+  const interval = setInterval(() => {
+    attempts++;
+    const win = window as any;
+    if (win.plugin && typeof win.plugin.translate === 'function') {
+      try {
+        win.plugin.translate(cleanText);
+        clearInterval(interval);
+      } catch (err) {
+        console.error("Error communicating with VLibras:", err);
+        clearInterval(interval);
+      }
+    }
+    if (attempts > 30) { // Timeout after 15 seconds
+      clearInterval(interval);
+    }
+  }, 500);
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"Ngola Tutor\".\n\n" +
@@ -705,6 +737,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const messagesRef = useRef<ChatMessage[]>([]);
   const liveModelTranscriptRef = useRef('');
   const liveUserTranscriptRef = useRef('');
+  const lastTranslatedIndexRef = useRef(0);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, liveTranscript]);
@@ -1077,6 +1110,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     isTearingDownRef.current = false;
     liveModelTranscriptRef.current = '';
     liveUserTranscriptRef.current = '';
+    lastTranslatedIndexRef.current = 0;
     setIsConnecting(true);
     setError('');
 
@@ -1149,6 +1183,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 saveVoiceTurn(liveUserTranscriptRef.current.trim(), t);
                 liveUserTranscriptRef.current = '';
                 liveModelTranscriptRef.current = '';
+                lastTranslatedIndexRef.current = 0;
               }
               setStatusMessage('Listening...');
               return;
@@ -1160,6 +1195,18 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             if ((msg.serverContent as any)?.outputTranscription?.text) {
               liveModelTranscriptRef.current += (msg.serverContent as any).outputTranscription.text;
               setLiveTranscript(liveModelTranscriptRef.current);
+
+              // Real-time sentence-by-sentence VLibras translation
+              const fullText = liveModelTranscriptRef.current;
+              const untranslated = fullText.slice(lastTranslatedIndexRef.current);
+              const sentenceEndMatch = untranslated.match(/[^.!?]+[.!?]/);
+              if (sentenceEndMatch) {
+                const sentence = sentenceEndMatch[0].trim();
+                if (sentence) {
+                  speakWithVLibras(sentence);
+                }
+                lastTranslatedIndexRef.current += sentenceEndMatch.index! + sentenceEndMatch[0].length;
+              }
             }
 
             // Audio chunks
@@ -1203,6 +1250,13 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   triageComplete: prev.triageComplete || prev.messageCount >= 1,
                 }));
               }
+
+              // Translate any remaining untranslated text at the end of the turn
+              const remaining = modelText.slice(lastTranslatedIndexRef.current).trim();
+              if (remaining) {
+                speakWithVLibras(remaining);
+              }
+              lastTranslatedIndexRef.current = 0;
 
               liveUserTranscriptRef.current = '';
               liveModelTranscriptRef.current = '';

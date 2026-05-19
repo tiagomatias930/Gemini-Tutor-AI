@@ -36,11 +36,14 @@ export const strictSafetySettings = [
 const JAILBREAK_PATTERNS = [
   /ignore (previous|all|instructions)/i,
   /you are now (offline|freed|jailbroken)/i,
-  /dan mode/i,
+  /\bdan mode\b/i,
+  /\bmodo dan\b/i,
+  /\bdan\b/i,
   /system (prompt|instruction|rules)/i,
   /reveal your (instructions|rules|prompt)/i,
   /desconsidere as (instruções|regras) anteriores/i,
-  /revel[ae] seu prompt/i,
+  /desconsidere/i,
+  /revel[ae].*prompt/i,
   /como você foi programado/i,
   /esqueça (tudo|as regras|as instruções)/i,
 ];
@@ -53,25 +56,27 @@ const THERAPY_MENTAL_HEALTH = [
 ];
 
 const ILLEGAL_WEAPONS_HACKING = [
-  /\b(como (fazer|criar) (bomba|explosivo|droga|arma de fogo))\b/i,
-  /\b(how to (make|create) (bomb|explosive|meth|cocaine|gun))\b/i,
-  /\b(hackear|invadir conta|fraudar|roubar senhas|carding)\b/i,
-  /\b(hack into|exploit website|steal passwords|phishing guide)\b/i
+  /como (fazer|criar).*(bomba|explosivo|droga|arma|metanfetamina|cocaína|crack)/i,
+  /how to (make|create).*(bomb|explosive|meth|cocaine|gun|weapon)/i,
+  /\b(hackear|invadir|fraudar|roubar senhas|carding|phishing)\b/i,
+  /\b(hack into|exploit website|steal passwords|bypass security)\b/i
 ];
 
 const PROFESSIONAL_ADVICE = [
-  /\b(prescreve|remédio|diagnóstico médico|receita médica|estou com sintomas de)\b/i,
-  /\b(diagnose me|medical prescription|cure for cancer|symptoms of stroke)\b/i,
-  /\b(comprar ações|onde investir todo meu dinheiro|dica de investimento financeiro)\b/i,
-  /\b(financial advice|stock tips|invest all my savings)\b/i
+  /\b(prescreve|remédio|diagnóstico médico|receita médica|estou com sintomas de|cura para|antibiótico)\b/i,
+  /\b(diagnose me|medical prescription|cure for|symptoms of|antibiotics)\b/i,
+  /\b(ações|bolsa de valores|investir|investimento|poupanças|criptomoedas|bitcoin|ações na bolsa)\b/i,
+  /\b(financial advice|stock tips|invest all my savings|buy stocks|cryptocurrency)\b/i
 ];
 
 // ─── Portuguese, English, French Persona Refusal Generators ─────────────────
 
 function getLanguage(text: string): 'pt' | 'en' | 'fr' {
   const lower = text.toLowerCase();
-  if (/\b(obrigad[oa]|também|então|não|está|você|ainda|compreend|ficheiro|preciso de|olá|bom dia)\b/.test(lower)) return 'pt';
-  if (/\b(bonjour|merci|comment|pourquoi|besoin|comprend|expliquer?|question|je suis|s'il vous|c'est)\b/.test(lower)) return 'fr';
+  // Highly sensitive Portuguese classifier
+  if (/\b(obrigad[oa]|também|então|não|está|você|ainda|compreend|ficheiro|preciso|olá|bom dia|quem|és|tu|resolve|equação|como|ações|bolsa|poupanças|fazer|criar|bomba|explosivo)\b/.test(lower) || /\b(o|a|do|da|no|na|para|com|um|uma|seu|teu|minha|minhas)\b/.test(lower)) return 'pt';
+  // French classifier
+  if (/\b(bonjour|merci|comment|pourquoi|besoin|comprend|expliquer?|question|je suis|s'il vous|c'est|le|la|les|en|pour|avec|un|une)\b/.test(lower)) return 'fr';
   return 'en';
 }
 
@@ -155,7 +160,6 @@ export function validateOutput(responseText: string, originalPrompt: string): { 
   let cleanedResponse = responseText;
 
   // A. Alignment check: Enforce Persona boundaries (Anti-System Prompt Leakage)
-  // If the model leaked system keywords like "TUTOR_SYSTEM_INSTRUCTION", "GT_WHITEBOARD_COMMAND" (as a raw string explanation), etc.
   if (cleanedResponse.includes("TUTOR_SYSTEM_INSTRUCTION") || cleanedResponse.includes("isDeafMode") || cleanedResponse.includes("isVisionAssist")) {
     return {
       aligned: false,
@@ -165,12 +169,14 @@ export function validateOutput(responseText: string, originalPrompt: string): { 
 
   // B. Alignment check: Mitigate Google default persona leakage
   // E.g., if the LLM states "I am a large language model trained by Google" instead of "Ngola Tutor"
-  if (/trained by Google/i.test(cleanedResponse) || /model created by Google/i.test(cleanedResponse) || /inteligência artificial criada pela Google/i.test(cleanedResponse)) {
+  if (/google/i.test(cleanedResponse) && /(treinado|criado|modelo|language model|artificial intelligence|inteligência artificial)/i.test(cleanedResponse)) {
     if (lang === 'pt') {
       cleanedResponse = cleanedResponse.replace(/modelo de linguagem (treinado|criado) pela Google/gi, "tutor académico digital Ngola");
       cleanedResponse = cleanedResponse.replace(/large language model trained by Google/gi, "Ngola Tutor, a friendly digital academic guide");
+      cleanedResponse = cleanedResponse.replace(/ia criada pela google/gi, "Ngola Tutor");
     } else {
       cleanedResponse = cleanedResponse.replace(/large language model trained by Google/gi, "Ngola Tutor, a friendly digital academic guide");
+      cleanedResponse = cleanedResponse.replace(/modelo de linguagem (treinado|criado) pela Google/gi, "Ngola Tutor, a friendly digital academic guide");
     }
   }
 

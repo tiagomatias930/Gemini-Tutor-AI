@@ -10,6 +10,7 @@ import { LandingPage } from './LandingPage';
 import { useTheme } from './contexts/ThemeContext';
 import { t, type Lang } from './i18n';
 import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
+import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -33,8 +34,14 @@ const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"N
   "- **Adaptive Accessibility**: The interface transforms based on 'isDeafMode' (visual-first) or 'isVisionAssist' (audio-first).\n" +
   "- **Pedagogical Closure**: Always end concepts with a check for understanding and update the '[GT_MEMORY_UPDATE]' tag.\n\n" +
   "## INTERACTIVE WHITEBOARD COMMANDS\n" +
-  "You can draw on the student's whiteboard to explain concepts. Use the following tag in your response whenever a visual aid would help:\n" +
-  "`[GT_WHITEBOARD_COMMAND: {\"id\": \"unique_id\", \"type\": \"text|circle|square|arrow|line\", \"x\": 100, \"y\": 100, \"content\": \"label\", \"width\": 50, \"height\": 50, \"color\": \"#hex\"}]`\n\n" +
+  "You can draw beautiful, highly professional diagrams, flowcharts, or equations on the student's whiteboard to explain concepts.\n" +
+  "- ALWAYS aim for a clean, professional corporate look: use `\"roughness\": 0` (perfect straight lines) and `\"fontFamily\": 2` (modern Helvetica/sans-serif font).\n" +
+  "- Layout elements in a structured, aligned manner with appropriate spacing and alignment.\n" +
+  "- Use a clean color palette: `#1a73e8` (primary blue), `#34a853` (green for concepts/stable states), `#ea4335` (red for critical steps/attention), `#fbbc05` (yellow for warnings), `#9c27b0` (purple for structures).\n" +
+  "- Connect shapes using arrows (`type: \"arrow\"`) to represent flow or links.\n" +
+  "- Provide beautiful shaded boxes using `\"fillStyle\": \"solid\"` or `\"cross-hatch\"` and a nice `backgroundColor` (e.g., `#e8f0fe` with `color: \"#1a73e8\"`).\n" +
+  "- Format: `[GT_WHITEBOARD_COMMAND: {\"id\": \"id1\", \"type\": \"square|circle|text|arrow|line\", \"x\": 100, \"y\": 100, \"width\": 120, \"height\": 60, \"content\": \"Label\", \"color\": \"#1a73e8\", \"roughness\": 0, \"fontFamily\": 2, \"fillStyle\": \"solid\", \"backgroundColor\": \"#e8f0fe\"}]`\n" +
+  "- You can output multiple command tags in one turn to draw complete, comprehensive educational layouts.\n\n" +
   "## FORMATTING & TONE\n" +
   "Concise, encouraging, and deeply personalized. You are not just a tool; you are a mentor.";
 
@@ -536,6 +543,25 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [isSending, setIsSending] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [uploadedFile, setUploadedFile] = useState<FileAttachment | null>(null);
+
+  // Dynamically compute avatar gesture based on system state and keywords
+  const avatarGesture = (() => {
+    if (isConnecting) return 'thinking';
+    if (isSending) return 'thinking';
+    if (isModelSpeaking) {
+      // Check last message for warning or confirmation keywords
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg && lastMsg.role === 'assistant') {
+        const text = lastMsg.text.toLowerCase();
+        if (/\b(cuidado|atenção|aviso|perigo|segurança)\b/.test(text)) return 'warning';
+        if (/\b(certo|correto|excelente|parabéns|boa|exato|sim)\b/.test(text)) return 'confirming';
+        if (/\b(explica|aponta|olha|vê|observa)\b/.test(text)) return 'pointing';
+      }
+      return 'explaining';
+    }
+    if (isConnected) return 'listening';
+    return 'idle';
+  })();
 
   // Update memory persistence
   useEffect(() => {

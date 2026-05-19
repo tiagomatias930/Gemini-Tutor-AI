@@ -19,6 +19,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { Firestore } from '@google-cloud/firestore';
+import { validateInput, validateOutput, strictSafetySettings } from './safety.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -74,8 +75,14 @@ Maintain a persistent profile for the student:
 - **Visual Feedback**: If vision is active, reference what you see (e.g., "I see you're using a '+' instead of a '-', why is that?").
 
 ## INTERACTIVE WHITEBOARD COMMANDS
-You can draw on the student's whiteboard to explain concepts. Use the following tag in your response whenever a visual aid would help:
-\`[GT_WHITEBOARD_COMMAND: {"id": "unique_id", "type": "text|circle|square|arrow|line", "x": 100, "y": 100, "content": "label", "width": 50, "height": 50, "color": "#hex"}]\`
+You can draw beautiful, highly professional diagrams, flowcharts, or equations on the student's whiteboard to explain concepts.
+- ALWAYS aim for a clean, professional corporate look: use \`"roughness": 0\` (perfect straight lines) and \`"fontFamily": 2\` (modern Helvetica/sans-serif font).
+- Layout elements in a structured, aligned manner with appropriate spacing and alignment.
+- Use a clean color palette: \`#1a73e8\` (primary blue), \`#34a853\` (green for concepts/stable states), \`#ea4335\` (red for critical steps/attention), \`#fbbc05\` (yellow for warnings), \`#9c27b0\` (purple for structures).
+- Connect shapes using arrows (\`type: "arrow"\`) to represent flow or links.
+- Provide beautiful shaded boxes using \`"fillStyle": "solid"\` or \`"cross-hatch"\` and a nice \`backgroundColor\` (e.g., \`#e8f0fe\` with \`color: "#1a73e8"\`).
+- Format: \`[GT_WHITEBOARD_COMMAND: {"id": "id1", "type": "square|circle|text|arrow|line", "x": 100, "y": 100, "width": 120, "height": 60, "content": "Label", "color": "#1a73e8", "roughness": 0, "fontFamily": 2, "fillStyle": "solid", "backgroundColor": "#e8f0fe"}]\`
+- You can output multiple command tags in one turn to draw complete, comprehensive educational layouts.
 
 ## ACCESSIBILITY & VIDEO SUPPORT
 - **Sign Language Avatar**: If the student uses "Deaf Mode", use clear, visual language. The avatar will react to keywords like "Certo", "Atenção", "Explica", "Penso".
@@ -185,6 +192,7 @@ async function generateText(
     config: {
       systemInstruction: effectiveInstruction || TUTOR_SYSTEM_INSTRUCTION,
       tools: [{ googleSearch: {} }],
+      safetySettings: strictSafetySettings,
     },
   });
 
@@ -217,6 +225,7 @@ async function generateImage(concept: string, tutorContext?: string): Promise<Ge
       config: {
         // Both TEXT (caption) and IMAGE output — full multimodal generation
         responseModalities: ['TEXT', 'IMAGE'],
+        safetySettings: strictSafetySettings,
       },
     });
 
@@ -285,7 +294,34 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const userText = message || (fileData ? `Analisa este ficheiro: ${fileData.name}` : 'Please analyze this image and help me understand it.');
-    const textResponse = await generateText(userText, image, chatHistory, fileData, effectiveInstruction);
+
+    // ── Input Safety & Policy Guardrails (Pre-flight Validation) ──
+    const inputSafety = validateInput(userText);
+    if (!inputSafety.safe) {
+      const refusalResponse = inputSafety.response || 'Prompt blocked due to security policies.';
+      
+      if (sessionId) {
+        const now = new Date().toISOString();
+        await saveMessages(sessionId, [
+          { role: 'user', text: userText, timestamp: now, source: 'text' },
+          { role: 'assistant', text: refusalResponse, timestamp: now, source: 'text' },
+        ]);
+      }
+      
+      res.json({
+        response: refusalResponse,
+        generatedImage: null,
+        generatedImageMime: null,
+        imageCaption: null,
+      });
+      return;
+    }
+
+    const textResponseRaw = await generateText(userText, image, chatHistory, fileData, effectiveInstruction);
+
+    // ── Output Alignment & Socratic Guardrails (Post-flight Validation) ──
+    const outputSafety = validateOutput(textResponseRaw, userText);
+    const textResponse = outputSafety.response;
 
     // Auto-detect if a generated image would help understanding.
     // Triggered when: caller requests it explicitly OR the topic matches visual keywords.

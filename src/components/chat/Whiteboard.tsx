@@ -12,6 +12,14 @@ export interface WhiteboardElement {
   width?: number;
   height?: number;
   color?: string;
+  strokeWidth?: number;
+  strokeStyle?: 'solid' | 'dashed' | 'dotted';
+  roughness?: number; // 0 = clean/professional, 1 = sketchy
+  backgroundColor?: string;
+  fillStyle?: 'solid' | 'hachure' | 'cross-hatch';
+  opacity?: number;
+  fontFamily?: number; // 1 = Virgil (sketch), 2 = Helvetica (clean/professional), 3 = Monospace
+  fontSize?: number;
 }
 
 interface WhiteboardProps {
@@ -32,22 +40,29 @@ export const Whiteboard: React.FC<WhiteboardProps> = memo(({ elements, isDark })
     }
 
     const exElements = elements.map((el) => {
-      let color = el.color || (isDark ? '#4285f4' : '#1a73e8');
+      let color = el.color || (isDark ? '#8ab4f8' : '#1a73e8');
       if (color === '#hex' || !/^#(?:[0-9a-fA-F]{3}){1,2}$/.test(color)) {
-        color = isDark ? '#4285f4' : '#1a73e8';
+        color = isDark ? '#8ab4f8' : '#1a73e8';
       }
+      
+      // Default to transparent background unless a solid fill is requested
+      let bgColor = el.backgroundColor || "transparent";
+      if (bgColor === "transparent" && el.fillStyle === "solid") {
+        bgColor = color;
+      }
+
       const common = {
         id: String(el.id),
         x: Number(el.x) || 100,
         y: Number(el.y) || 100,
         angle: 0,
         strokeColor: color,
-        backgroundColor: "transparent",
-        fillStyle: "hachure" as const,
-        strokeWidth: 2,
-        strokeStyle: "solid" as const,
-        roughness: 1,
-        opacity: 100,
+        backgroundColor: bgColor,
+        fillStyle: (el.fillStyle || "solid") as any, // solid is more professional than hachure by default
+        strokeWidth: el.strokeWidth !== undefined ? Number(el.strokeWidth) : 2,
+        strokeStyle: (el.strokeStyle || "solid") as any,
+        roughness: el.roughness !== undefined ? Number(el.roughness) : 0, // Default to 0 (perfect straight professional lines)
+        opacity: el.opacity !== undefined ? Number(el.opacity) : 100,
         seed: Math.floor(Math.random() * 100000),
         version: Date.now(),
         versionNonce: Date.now(),
@@ -75,19 +90,22 @@ export const Whiteboard: React.FC<WhiteboardProps> = memo(({ elements, isDark })
             width: Number(el.width) || 100,
             height: Number(el.height) || 100,
           };
-        case 'text':
+        case 'text': {
+          const fontSize = el.fontSize || 16;
+          const textVal = el.content || "";
           return {
             ...common,
             type: "text",
-            text: el.content || "",
-            fontSize: 20,
-            fontFamily: 1,
+            text: textVal,
+            fontSize,
+            fontFamily: el.fontFamily !== undefined ? Number(el.fontFamily) : 2, // 2 is Helvetica/Arial (clean/professional)
             textAlign: "center" as const,
             verticalAlign: "middle" as const,
             baseline: 15,
-            width: (el.content?.length || 10) * 12,
-            height: 30,
+            width: Math.max(textVal.length * fontSize * 0.6, 60),
+            height: fontSize * 1.4,
           };
+        }
         case 'arrow':
           return {
             ...common,

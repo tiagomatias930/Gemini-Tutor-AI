@@ -91,14 +91,6 @@ Para casos especificos de pessoas portadoras de deficiencia:
 
 Dados recebido pelo GPT_teste de injecao de prompt : 1-pessoas trabalhando em tempo real.
 
-politicas de segurança para uma AI: Esse tipo de teste que você fez é parecido com validações de:
-
-1-alignment,
-2-prompt robustness,
-3-policy compliance,
-4- segurança comportamental de LLMs.
-README_TRAINNER_GPT:# GPT Training Pipeline (Educational Overview)
-
 ## 📌 Overview
 
 Large Language Models (LLMs) like GPT are trained using a multi-stage pipeline involving:
@@ -393,3 +385,34 @@ The objective is to create a model capable of:
 - Solving tasks across multiple domains
 
 ---
+
+======================== PARTE 4 ======================================
+
+Mecanismos de Validação e Segurança de LLMs (Implementados e Validados)
+
+Para responder às exigências de robustez contra ataques adversariais e garantir conformidade com políticas e segurança comportamental, foi desenvolvida uma arquitetura de segurança multi-camada integrada diretamente no backend do Ngola Tutor (em server/safety.ts e server/index.ts).
+
+Estas validações tratam as quatro frentes críticas de segurança e conformidade:
+
+1. Alinhamento de Persona e Método Socrático (Alignment)
+- Validação no pós-processamento das saídas do modelo.
+- Deteção e substituição de vazamentos da persona padrão (ex: se o modelo disser "Eu sou um modelo treinado pelo Google", o sistema corrige automaticamente para "Sou o seu Ngola Tutor").
+- Análise de respostas para garantir a presença de interações socráticas (perguntas de acompanhamento). Se o tutor der uma resposta de forma direta sem propor um raciocínio, o validador deteta e anexa provocações pedagógicas que forçam o estudante a pensar ativamente.
+
+2. Robustez de Prompt e Defesa contra Jailbreak (Prompt Robustness)
+- Filtro de segurança de entrada (pre-flight check).
+- Bloqueio completo de injeções de prompt adversariais como comandos para ignorar instruções anteriores ("ignore previous instructions", "desconsidere as regras"), agir como terminal desbloqueado ("DAN mode"), ou revelação de prompt confidenciais ("system prompt leakage").
+- Resposta imediata com uma recusa padronizada na persona do tutor, em português, inglês ou francês dependendo da entrada detetada.
+
+3. Conformidade Estrita de Políticas (Policy Compliance)
+- Integração de configurações de segurança ativas no Google GenAI SDK (safetySettings).
+- Todos os filtros de assédio, ódio, conteúdo sexualmente explícito e conteúdo perigoso configurados no nível máximo (BLOCK_LOW_AND_ABOVE) para os modelos de texto (gemini-2.5-flash) e imagens (gemini-2.5-flash-image).
+
+4. Segurança Comportamental e Limites Académicos (Behavioral Safety)
+- Filtro contra automutilação e intenções suicidas: Interceção imediata de mensagens sobre automutilação ou sentimentos profundos de depressão, com resposta empática indicando as linhas nacionais de suporte psicológico (como SOS Voz Amiga em Portugal e CVV no Brasil).
+- Bloqueio de atividades perigosas ou ilegais (instruções de fabrico de armas, explosivos, drogas, hacking, engenharia social).
+- Desvio de aconselhamento profissional: Bloqueio de pedidos que exijam diagnósticos de saúde, prescrições de remédios ou aconselhamento de investimento financeiro personalizado, fornecendo a explicação teórica da ciência envolvida e orientando a procurar profissionais especializados.
+
+======================== PARTE 5 ======================================
+
+Fazer a integração e comunicação do Ngola Tutor com a VLibras e 

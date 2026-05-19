@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { Firestore } from '@google-cloud/firestore';
-import { validateInput, validateOutput, strictSafetySettings } from './safety.ts';
+import { validateInput, validateOutput, strictSafetySettings } from './safety.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });

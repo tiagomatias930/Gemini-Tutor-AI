@@ -415,4 +415,9 @@ Estas validações tratam as quatro frentes críticas de segurança e conformida
 
 ======================== PARTE 5 ======================================
 
-Fazer a integração e comunicação do Ngola Tutor com a VLibras e 
+Fazer a integração e comunicação do Ngola Tutor com a VLibras e fazer com que o que o ngola estiver a falar seja interpretado pelo avatar isso caso o ngola esteja
+a falar e não a escrever.....
+
+======================== PARTE 6 ======================================
+
+Tratar a questão do vision ative mode, buscar e pesquisar uma tech melhorar que a nossa..

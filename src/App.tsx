@@ -12,6 +12,88 @@ import { t, type Lang } from './i18n';
 import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
 import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
 
+// ─── VLibras Integration Helper ────────────────────────────────────────────────
+const speakWithVLibras = (text: string) => {
+  // Clean up code tags/tokens before sending to VLibras
+  const cleanText = text.replace(/\[GT_WHITEBOARD_COMMAND:[^\]]+\]/g, '').trim();
+  if (!cleanText) return;
+
+  // 1. Find the VLibras access button and click it to open/activate the widget if not already active
+  const accessButton = document.querySelector('[vw-access-button]');
+  if (accessButton && !accessButton.classList.contains('active')) {
+    (accessButton as HTMLElement).click();
+  }
+
+  // 2. Safely call the window.plugin.translate method with polling to handle loading states
+  let attempts = 0;
+  const interval = setInterval(() => {
+    attempts++;
+    const win = window as any;
+    if (win.plugin && typeof win.plugin.translate === 'function') {
+      try {
+        win.plugin.translate(cleanText);
+        clearInterval(interval);
+      } catch (err) {
+        console.error("Error communicating with VLibras:", err);
+        clearInterval(interval);
+      }
+    }
+    if (attempts > 30) { // Timeout after 15 seconds
+      clearInterval(interval);
+    }
+  }, 500);
+};
+
+// ─── Localized Friendly Error Handler ──────────────────────────────────────────
+const formatFriendlyError = (errorMsg: string, lang: Lang): string => {
+  // If the error message is a raw JSON string from Google Cloud / Gemini API
+  let parsedMsg = errorMsg;
+  try {
+    if (errorMsg.trim().startsWith('{') || errorMsg.trim().startsWith('[')) {
+      const parsed = JSON.parse(errorMsg);
+      parsedMsg = parsed.error?.message || parsed.message || errorMsg;
+    }
+  } catch {
+    // Keep as string if parsing fails
+  }
+
+  const lower = parsedMsg.toLowerCase();
+
+  // 1. High Demand / Rate limit (503 UNAVAILABLE, 429 quota, etc.)
+  if (lower.includes('experiencing high demand') || lower.includes('unavailable') || lower.includes('503') || lower.includes('rate limit') || lower.includes('quota') || lower.includes('capacity')) {
+    if (lang === 'pt') {
+      return "Olá! O meu servidor está a receber muitas visitas de outros estudantes neste momento. 🚀 É um pico temporário! Por favor, aguarde um minutinho e tente enviar a mensagem novamente. Obrigado pela paciência!";
+    } else {
+      return "Hello! My server is currently experiencing a high volume of requests from other students. 🚀 This is usually temporary! Please wait a minute and try again. Thank you for your patience!";
+    }
+  }
+
+  // 2. Network offline / connection issues
+  if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('offline') || lower.includes('connection')) {
+    if (lang === 'pt') {
+      return "Parece que estamos com um problema de ligação à internet. 🌐 Por favor, verifique a sua ligação e tente novamente.";
+    } else {
+      return "It looks like we are experiencing a connection issue. 🌐 Please check your internet connection and try again.";
+    }
+  }
+
+  // 3. API Key issues
+  if (lower.includes('api key') || lower.includes('invalid key') || lower.includes('unauthorized') || lower.includes('403')) {
+    if (lang === 'pt') {
+      return "Ops! Ocorreu um problema de autorização com a chave da API do Gemini. 🔑 Por favor, verifique se a chave de acesso está configurada corretamente.";
+    } else {
+      return "Oops! An authorization problem occurred with the Gemini API key. 🔑 Please check that your access key is configured correctly.";
+    }
+  }
+
+  // 4. Default fallback friendly error
+  if (lang === 'pt') {
+    return `Desculpe, ocorreu um pequeno contratempo no processamento: ${parsedMsg}. Vamos tentar de novo?`;
+  } else {
+    return `Sorry, we hit a small bump in the road: ${parsedMsg}. Shall we try again?`;
+  }
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TUTOR_SYSTEM_INSTRUCTION = "You are a friendly, patient AI tutor named \"Ngola Tutor\".\n\n" +
@@ -705,6 +787,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const messagesRef = useRef<ChatMessage[]>([]);
   const liveModelTranscriptRef = useRef('');
   const liveUserTranscriptRef = useRef('');
+  const lastTranslatedIndexRef = useRef(0);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, liveTranscript]);
@@ -817,8 +900,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setIsCameraOn(true);
-    } catch { setError('Could not access camera. Please check permissions.'); }
-  }, []);
+    } catch {
+      setError(
+        lang === 'pt'
+          ? 'Não foi possível aceder à câmara. 📷 Por favor, verifique as permissões de acesso no seu navegador.'
+          : 'Could not access camera. 📷 Please check browser access permissions.'
+      );
+    }
+  }, [lang]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -1000,8 +1089,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         }, 100);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to send message');
-      setMessages(prev => [...prev, { role: 'assistant', text: `Sorry, something went wrong: ${err.message}`, source: 'text' }]);
+      const friendlyError = formatFriendlyError(err.message || 'Failed to send message', lang);
+      setError(friendlyError);
+      setMessages(prev => [...prev, { role: 'assistant', text: friendlyError, source: 'text' }]);
     } finally { setIsSending(false); }
   }, [chatInput, captureFrame, messages, apiKey, sessionId, resetTextarea, generateVisual, uploadedFile]);
 
@@ -1077,6 +1167,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     isTearingDownRef.current = false;
     liveModelTranscriptRef.current = '';
     liveUserTranscriptRef.current = '';
+    lastTranslatedIndexRef.current = 0;
     setIsConnecting(true);
     setError('');
 
@@ -1149,6 +1240,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 saveVoiceTurn(liveUserTranscriptRef.current.trim(), t);
                 liveUserTranscriptRef.current = '';
                 liveModelTranscriptRef.current = '';
+                lastTranslatedIndexRef.current = 0;
               }
               setStatusMessage('Listening...');
               return;
@@ -1160,6 +1252,18 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             if ((msg.serverContent as any)?.outputTranscription?.text) {
               liveModelTranscriptRef.current += (msg.serverContent as any).outputTranscription.text;
               setLiveTranscript(liveModelTranscriptRef.current);
+
+              // Real-time sentence-by-sentence VLibras translation
+              const fullText = liveModelTranscriptRef.current;
+              const untranslated = fullText.slice(lastTranslatedIndexRef.current);
+              const sentenceEndMatch = untranslated.match(/[^.!?]+[.!?]/);
+              if (sentenceEndMatch) {
+                const sentence = sentenceEndMatch[0].trim();
+                if (sentence) {
+                  speakWithVLibras(sentence);
+                }
+                lastTranslatedIndexRef.current += sentenceEndMatch.index! + sentenceEndMatch[0].length;
+              }
             }
 
             // Audio chunks
@@ -1204,6 +1308,13 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 }));
               }
 
+              // Translate any remaining untranslated text at the end of the turn
+              const remaining = modelText.slice(lastTranslatedIndexRef.current).trim();
+              if (remaining) {
+                speakWithVLibras(remaining);
+              }
+              lastTranslatedIndexRef.current = 0;
+
               liveUserTranscriptRef.current = '';
               liveModelTranscriptRef.current = '';
               setLiveTranscript('');
@@ -1221,7 +1332,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             flushAudioQueue();
             setModelSpeaking(false);
             setLiveTranscript('');
-            setError(`Connection error: ${err?.message || 'Unknown error'}`);
+            const friendly = formatFriendlyError(err?.message || 'Unknown error', lang);
+            setError(friendly);
             setIsConnecting(false);
           },
 
@@ -1280,7 +1392,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       startSendingFrames(session);
     } catch (err: any) {
       console.error('Session start error:', err);
-      setError(`Failed to connect: ${err?.message || 'Unknown error'}`);
+      const friendly = formatFriendlyError(err?.message || 'Unknown error', lang);
+      setError(friendly);
       setIsConnecting(false);
       setStatusMessage('Connection failed');
     }
@@ -1477,8 +1590,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
           <div className="mt-auto space-y-4">
             {error && (
-              <div className="px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2] rounded-xl text-[#c5221f] text-xs text-center">
-                {error}
+              <div>
               </div>
             )}
 
@@ -1487,12 +1599,12 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm
                             transition-all shadow-xl hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-[#ea4335] text-white shadow-red-500/20' : 'bg-[#1a73e8] text-white shadow-blue-500/20'
                   }`}>
-                {isConnected ? <><MicOff size={18} /> Stop Session</>
+                {isConnected ? <><MicOff size={18} /> Interromper sessão</>
                   : isConnecting ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg> Connecting...</>
-                    : <><Mic size={18} /> Start Tutoring</>}
+                    : <><Mic size={18} /> Iniciar Mentoria</>}
               </button>
 
               {isVisionAssist && isConnected && (

@@ -500,5 +500,7 @@ Este projeto está licenciado sob a Licença MIT - consulte o arquivo [LICENSE](
 ## Authors / Autores
 
 * **Tiago Matias** - *Initial work* - [tiagomatias930](https://github.com/tiagomatias930)
+* **Mauro Silva** - [maurosilvagunza](https://github.com/maurosilvagunza)
+
 
 See also the list of [contributors](CONTRIBUTORS.md) who participated in this project.

@@ -2,12 +2,14 @@ import React, { useRef, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useTexture, Float, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
+import { AudioMetrics } from '../../utils/audioAnalysis';
 
 interface AvatarProps {
   gesture?: string | null;
+  audioMetrics?: AudioMetrics;
 }
 
-const AvatarPlane: React.FC<AvatarProps> = ({ gesture }) => {
+const AvatarPlane: React.FC<AvatarProps> = ({ gesture, audioMetrics }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   
   // Use try-catch or safe loading for texture
@@ -17,10 +19,33 @@ const AvatarPlane: React.FC<AvatarProps> = ({ gesture }) => {
     if (!meshRef.current) return;
     const t = state.clock.getElapsedTime();
     
-    // Subtle idle floating
+    // Base idle floating
     meshRef.current.position.y = Math.sin(t) * 0.1;
     
-    // Reaction based on gesture
+    // Audio-responsive animations when model is speaking
+    if (audioMetrics?.isActive && gesture === 'explaining') {
+      // Amplitude modulation based on audio energy
+      const energyBoost = audioMetrics.energy * 0.15;
+      
+      // Add subtle mouth/jaw movement based on bass energy (vowels)
+      const bassInfluence = audioMetrics.bassEnergy * 0.1;
+      meshRef.current.position.y += bassInfluence;
+      
+      // Head nodding intensity based on overall energy
+      meshRef.current.rotation.z = Math.sin(t * 8 + audioMetrics.peakFrequency * 0.0001) * (0.05 + energyBoost);
+      
+      // Scale variation based on audio dynamics
+      meshRef.current.scale.setScalar(1 + Math.sin(t * 12) * 0.02 + energyBoost * 0.05);
+      
+      // Treble response - more expressive movements for consonants
+      if (audioMetrics.trebleEnergy > 0.3) {
+        meshRef.current.rotation.x = Math.sin(t * 10) * 0.03;
+      }
+      
+      return;
+    }
+    
+    // Reaction based on gesture (non-audio responsive)
     if (gesture === 'explaining') {
       meshRef.current.rotation.z = Math.sin(t * 10) * 0.05;
       meshRef.current.scale.setScalar(1 + Math.sin(t * 12) * 0.02);
@@ -52,7 +77,7 @@ const AvatarPlane: React.FC<AvatarProps> = ({ gesture }) => {
   );
 };
 
-export const SignLanguageAvatar: React.FC<AvatarProps> = ({ gesture = 'idle' }) => {
+export const SignLanguageAvatar: React.FC<AvatarProps> = ({ gesture = 'idle', audioMetrics }) => {
   return (
     <div className="w-full h-full min-h-[300px] bg-gradient-to-b from-blue-500/10 to-purple-500/10 rounded-3xl overflow-hidden border border-white/20 shadow-2xl backdrop-blur-sm relative group">
       <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-white/50 text-xs">Loading Avatar...</div>}>
@@ -62,7 +87,7 @@ export const SignLanguageAvatar: React.FC<AvatarProps> = ({ gesture = 'idle' }) 
           <pointLight position={[10, 10, 10]} intensity={1} />
           
           <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
-            <AvatarPlane gesture={gesture} />
+            <AvatarPlane gesture={gesture} audioMetrics={audioMetrics} />
           </Float>
           
           <ContactShadows opacity={0.4} scale={10} blur={2.5} far={4} resolution={256} color="#000000" />

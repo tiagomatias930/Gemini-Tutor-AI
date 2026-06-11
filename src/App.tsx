@@ -11,6 +11,7 @@ import { useTheme } from './contexts/ThemeContext';
 import { t, type Lang } from './i18n';
 import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
 import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
+import { AudioAnalyzer, FrameSyncAudioAnalyzer, AudioGestureMapper, type AudioMetrics } from './utils/audioAnalysis';
 
 // ─── VLibras Integration Helper ────────────────────────────────────────────────
 const speakWithVLibras = (text: string) => {
@@ -626,11 +627,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [liveTranscript, setLiveTranscript] = useState('');
   const [uploadedFile, setUploadedFile] = useState<FileAttachment | null>(null);
 
-  // Dynamically compute avatar gesture based on system state and keywords
+  // Dynamically compute avatar gesture based on system state, keywords, and audio metrics
   const avatarGesture = (() => {
     if (isConnecting) return 'thinking';
     if (isSending) return 'thinking';
     if (isModelSpeaking) {
+      // Use audio-driven gesture mapping for more responsive animations
+      const mappedGesture = AudioGestureMapper.mapMetricsToGesture(audioMetrics, 'explaining');
+      
       // Check last message for warning or confirmation keywords
       const lastMsg = messages[messages.length - 1];
       if (lastMsg && lastMsg.role === 'assistant') {
@@ -639,7 +643,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         if (/\b(certo|correto|excelente|parabéns|boa|exato|sim)\b/.test(text)) return 'confirming';
         if (/\b(explica|aponta|olha|vê|observa)\b/.test(text)) return 'pointing';
       }
-      return 'explaining';
+      return mappedGesture;
     }
     if (isConnected) return 'listening';
     return 'idle';
@@ -788,6 +792,19 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const liveModelTranscriptRef = useRef('');
   const liveUserTranscriptRef = useRef('');
   const lastTranslatedIndexRef = useRef(0);
+  
+  // Audio analysis for avatar synchronization
+  const audioAnalyzerRef = useRef<AudioAnalyzer | null>(null);
+  const frameSyncAnalyzerRef = useRef<FrameSyncAudioAnalyzer | null>(null);
+  const playbackAnalyserNodeRef = useRef<AnalyserNode | null>(null);
+  const [audioMetrics, setAudioMetrics] = useState<AudioMetrics>({
+    isActive: false,
+    energy: 0,
+    peakFrequency: 0,
+    bassEnergy: 0,
+    trebleEnergy: 0,
+    frequencyData: new Uint8Array(0),
+  });
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, liveTranscript]);
@@ -1114,7 +1131,24 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       if (!playbackCtxRef.current || playbackCtxRef.current.state === 'closed') {
         playbackCtxRef.current = new AudioContext({ sampleRate: 24000 });
         nextPlayTimeRef.current = 0;
+        
+        // Create analyser node for audio metrics
+        if (playbackCtxRef.current) {
+          playbackAnalyserNodeRef.current = playbackCtxRef.current.createAnalyser();
+          audioAnalyzerRef.current = new AudioAnalyzer(playbackCtxRef.current, playbackAnalyserNodeRef.current);
+          
+          // Start frame-synchronized analysis
+          if (frameSyncAnalyzerRef.current) {
+            frameSyncAnalyzerRef.current.stop();
+          }
+          frameSyncAnalyzerRef.current = new FrameSyncAudioAnalyzer(audioAnalyzerRef.current);
+          frameSyncAnalyzerRef.current.onMetricsUpdated((metrics) => {
+            setAudioMetrics(metrics);
+          });
+          frameSyncAnalyzerRef.current.start();
+        }
       }
+      
       const ctx = playbackCtxRef.current;
       const raw = atob(base64Audio);
       const bytes = new Uint8Array(raw.length).map((_, i) => raw.charCodeAt(i));
@@ -1125,14 +1159,37 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       buf.getChannelData(0).set(f32);
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      src.connect(ctx.destination);
+      
+      // Connect through analyser node to capture audio metrics
+      if (playbackAnalyserNodeRef.current) {
+        src.connect(playbackAnalyserNodeRef.current);
+        playbackAnalyserNodeRef.current.connect(ctx.destination);
+      } else {
+        src.connect(ctx.destination);
+      }
+      
       const startAt = Math.max(ctx.currentTime, nextPlayTimeRef.current);
       src.start(startAt);
       nextPlayTimeRef.current = startAt + buf.duration;
       scheduledSourcesRef.current.push(src);
       src.onended = () => {
         scheduledSourcesRef.current = scheduledSourcesRef.current.filter(s => s !== src);
-        if (scheduledSourcesRef.current.length === 0) { setModelSpeaking(false); setLiveTranscript(''); }
+        if (scheduledSourcesRef.current.length === 0) { 
+          setModelSpeaking(false);
+          setLiveTranscript('');
+          // Stop audio analysis when speech ends
+          if (frameSyncAnalyzerRef.current) {
+            frameSyncAnalyzerRef.current.stop();
+          }
+          setAudioMetrics({
+            isActive: false,
+            energy: 0,
+            peakFrequency: 0,
+            bassEnergy: 0,
+            trebleEnergy: 0,
+            frequencyData: new Uint8Array(0),
+          });
+        }
       };
       if (!isModelSpeakingRef.current) setModelSpeaking(true);
     } catch (err) { console.warn('Audio playback error:', err); }
@@ -1574,7 +1631,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 </div>
               </div>
               <div className="h-[calc(100%-36px)]">
-                <SignLanguageAvatar gesture={avatarGesture} />
+                <SignLanguageAvatar gesture={avatarGesture} audioMetrics={audioMetrics} />
               </div>
             </div>
           )}
@@ -1672,7 +1729,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         {/* Avatar overlay for mobile */}
         {isDeafMode && (
           <div className="absolute top-4 left-4 z-50 w-32 h-44 shadow-2xl animate-in slide-in-from-left-4 duration-500">
-            <SignLanguageAvatar gesture={avatarGesture} />
+            <SignLanguageAvatar gesture={avatarGesture} audioMetrics={audioMetrics} />
           </div>
         )}
 

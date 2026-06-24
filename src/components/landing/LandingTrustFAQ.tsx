@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Add, Remove, Google, GitHub, LinkedIn, School } from '@mui/icons-material';
+import { Add, Remove, Google, GitHub, School , Work} from '@mui/icons-material';
 import { t } from '../../i18n';
 import { LandingSectionProps } from './types';
 
 export const LandingTrust: React.FC<LandingSectionProps> = ({ c, isDark }) => {
   const partners = [
     { name: 'Google Gemini', Icon: Google },
+    { name: '42 Luanda', Icon: Work },
     { name: 'GitHub Education', Icon: GitHub },
     { name: 'Dom Bosco', Icon: School }
   ];
@@ -15,7 +16,7 @@ export const LandingTrust: React.FC<LandingSectionProps> = ({ c, isDark }) => {
     <div className="py-12 border-y" style={{ borderColor: c.border, background: c.bgAlt }}>
       <div className="max-w-7xl mx-auto px-4">
         <p className="text-center text-sm font-medium mb-8 uppercase tracking-widest opacity-60">
-          Powered by industry leading technologies
+          Powered by Tiago Matias, Mauro Gunza, and Constância Tati
         </p>
         <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
           {partners.map((p, i) => (

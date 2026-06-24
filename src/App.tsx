@@ -598,6 +598,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [isSending, setIsSending] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [uploadedFile, setUploadedFile] = useState<FileAttachment | null>(null);
+  const [showGuide, setShowGuide] = useState(() => localStorage.getItem('gt_hide_guide') !== 'true');
+  const [guideStep, setGuideStep] = useState(0);
 
   // Dynamically compute avatar gesture based on system state and keywords
   const avatarGesture = (() => {
@@ -1461,6 +1463,12 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             {lang.toUpperCase()}
           </button>
 
+          {/* Deaf Mode Toggle */}
+          <button onClick={() => setIsDeafMode(!isDeafMode)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDeafMode ? 'bg-purple-600 text-white border-purple-500 shadow-lg shadow-purple-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+            <Volume2 size={14} />
+            {isDeafMode ? 'LIBRAS ON' : 'LIBRAS OFF'}
+          </button>
+
           {/* Vision Assist Toggle */}
           <button onClick={() => setIsVisionAssist(!isVisionAssist)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isVisionAssist ? 'bg-amber-600 text-white border-amber-500 shadow-lg shadow-amber-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
             <Eye size={14} />
@@ -1471,6 +1479,12 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           <button onClick={() => setIsChatVisible(!isChatVisible)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isChatVisible ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
             <MessageSquare size={14} />
             {isChatVisible ? `${t(lang, 'chatMessages').toUpperCase()} ON` : `${t(lang, 'chatMessages').toUpperCase()} OFF`}
+          </button>
+
+          {/* Guide Toggle */}
+          <button onClick={() => { setGuideStep(0); setShowGuide(true); }} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDark ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+            <BookOpen size={14} className="text-blue-500" />
+            {t(lang, 'guideOpenBtn').toUpperCase()}
           </button>
 
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide border transition-all duration-500 ${isConnected ? 'bg-green-500/10 text-green-500 border-green-500/30'
@@ -1847,6 +1861,185 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           </div>
         </div>
       </div>
+      {/* ── INTERACTIVE ONBOARDING GUIDE MODAL ── */}
+      {showGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className={`relative w-full max-w-xl rounded-3xl p-6 md:p-8 border shadow-2xl transition-all duration-300 overflow-hidden ${isDark ? 'bg-slate-900/90 border-white/10 text-white' : 'bg-white/95 border-gray-200 text-gray-800'}`}>
+            
+            {/* Background glow effects */}
+            <div className="absolute inset-0 pointer-events-none opacity-20 z-0">
+              <div className="absolute -top-[20%] -left-[20%] w-[60%] h-[60%] rounded-full blur-[80px] bg-blue-500" />
+              <div className="absolute -bottom-[20%] -right-[20%] w-[60%] h-[60%] rounded-full blur-[80px] bg-purple-500" />
+            </div>
+
+            <div className="relative z-10 flex flex-col h-full">
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                      <BookOpen size={20} />
+                    </span>
+                    {t(lang, 'guideTitle')}
+                  </h3>
+                  <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {t(lang, 'guideSubtitle')}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => { setShowGuide(false); localStorage.setItem('gt_hide_guide', 'true'); }}
+                  className={`p-1.5 rounded-xl border transition-all hover:bg-red-500/10 hover:text-red-500 ${isDark ? 'border-white/10 text-gray-400' : 'border-gray-200 text-gray-500'}`}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Progress bar */}
+              <div className="flex gap-1.5 mb-8">
+                {[0, 1, 2, 3, 4].map((stepIdx) => (
+                  <button
+                    key={stepIdx}
+                    onClick={() => setGuideStep(stepIdx)}
+                    className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                      guideStep === stepIdx 
+                        ? 'bg-blue-600' 
+                        : guideStep > stepIdx 
+                          ? 'bg-blue-600/40' 
+                          : isDark ? 'bg-white/10' : 'bg-gray-200'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Content */}
+              <div className="min-h-[220px] flex flex-col justify-between mb-8">
+                <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                  {guideStep === 0 && (
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center mb-4">
+                        <MessageSquare size={24} />
+                      </div>
+                      <h4 className="text-lg font-bold">{t(lang, 'guideStep1Title')}</h4>
+                      <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {t(lang, 'guideStep1Desc')}
+                      </p>
+                      <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                        <span className="p-1 rounded-lg bg-blue-500/10 text-blue-500 font-bold">💡 Tip</span>
+                        <span>{lang === 'pt' ? 'Podes clicar nos botões de sugestões para começar logo a testar!' : 'You can click suggestion buttons to start testing right away!'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {guideStep === 1 && (
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-red-500/15 text-red-500 flex items-center justify-center mb-4 animate-pulse">
+                        <Mic size={24} />
+                      </div>
+                      <h4 className="text-lg font-bold">{t(lang, 'guideStep2Title')}</h4>
+                      <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {t(lang, 'guideStep2Desc')}
+                      </p>
+                      <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                        <span className="p-1 rounded-lg bg-red-500/10 text-red-500 font-bold">🎙️ Call</span>
+                        <span>{lang === 'pt' ? 'O microfone flutuante ativa a comunicação mãos-livres por voz!' : 'The floating microphone activates hands-free voice communication!'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {guideStep === 2 && (
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center mb-4">
+                        <Palette size={24} />
+                      </div>
+                      <h4 className="text-lg font-bold">{t(lang, 'guideStep3Title')}</h4>
+                      <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {t(lang, 'guideStep3Desc')}
+                      </p>
+                      <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                        <span className="p-1 rounded-lg bg-indigo-500/10 text-indigo-500 font-bold">✏️ Whiteboard</span>
+                        <span>{lang === 'pt' ? 'Carrega em "Visualizar" nas respostas para gerar ilustrações.' : 'Click "Visualize" on replies to generate illustrations.'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {guideStep === 3 && (
+                    <div className="space-y-4">
+                      <div className="flex gap-2 mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+                          <Camera size={24} />
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center">
+                          <Paperclip size={24} />
+                        </div>
+                      </div>
+                      <h4 className="text-lg font-bold">{t(lang, 'guideStep4Title')}</h4>
+                      <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {t(lang, 'guideStep4Desc')}
+                      </p>
+                      <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                        <span className="p-1 rounded-lg bg-amber-500/10 text-amber-500 font-bold">📄 Multi-Modal</span>
+                        <span>{lang === 'pt' ? 'Tira foto ou carrega PDFs para resolver exercícios diretamente.' : 'Take a photo or upload PDFs to solve exercises directly.'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {guideStep === 4 && (
+                    <div className="space-y-4">
+                      <div className="flex gap-2 mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center">
+                          <Volume2 size={24} />
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+                          <Eye size={24} />
+                        </div>
+                      </div>
+                      <h4 className="text-lg font-bold">{t(lang, 'guideStep5Title')}</h4>
+                      <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {t(lang, 'guideStep5Desc')}
+                      </p>
+                      <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                        <span className="p-1 rounded-lg bg-purple-500/10 text-purple-500 font-bold">♿ Assist</span>
+                        <span>{lang === 'pt' ? 'Ideal para acessibilidade (libras e facilidades visuais/auditivas).' : 'Ideal for accessibility (libras and visual/auditory aids).'}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer actions */}
+              <div className="flex justify-between items-center border-t border-white/10 pt-4 mt-auto">
+                <button
+                  onClick={() => setGuideStep(p => Math.max(0, p - 1))}
+                  disabled={guideStep === 0}
+                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border ${
+                    guideStep === 0 
+                      ? 'opacity-30 cursor-not-allowed border-transparent' 
+                      : isDark ? 'border-white/10 text-white hover:bg-white/5' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {t(lang, 'guidePrev')}
+                </button>
+
+                {guideStep < 4 ? (
+                  <button
+                    onClick={() => setGuideStep(p => p + 1)}
+                    className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+                  >
+                    {t(lang, 'guideNext')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { setShowGuide(false); localStorage.setItem('gt_hide_guide', 'true'); }}
+                    className="px-6 py-3 text-xs font-black uppercase tracking-widest bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-lg shadow-green-500/25 transition-all"
+                  >
+                    {t(lang, 'guideClose')}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

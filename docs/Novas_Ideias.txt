@@ -3,7 +3,7 @@ Planejamento da Nova Atualizacao do Gemini Tutor
 {   ======================== PARTE 1 ======================================
     
     Objetivo Geral
-Transformar o Gemini Tutor em uma plataforma educacional mais inclusiva, inteligente e interativa, ampliando a acessibilidade para usuarios com deficiencia auditiva, de fala e visual, ao mesmo tempo em que melhora a experiencia geral de todos os usuarios.
+Transformar o Ngola Tutor em uma plataforma educacional mais inclusiva, inteligente e interativa, ampliando a acessibilidade para usuarios com deficiencia auditiva, de fala e visual, ao mesmo tempo em que melhora a experiencia geral de todos os usuarios.
 
 Visao da Atualizacao
 Esta atualizacao tem como foco principal elevar o Gemini Tutor para um novo nivel de ensino assistido por IA. A proposta e combinar acessibilidade, explicacao pedagogica multimodal, memoria contextual, maior capacidade de leitura e recursos visuais de apoio, permitindo que o tutor ensine com mais clareza, adaptacao e eficiencia.

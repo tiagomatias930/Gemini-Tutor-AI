@@ -156,12 +156,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = (props) => {
                       <div className="w-16 h-16 flex items-center justify-center rounded-2xl bg-blue-500/10 mb-2">
                         <img src="./logoGT.png" alt="Logo" className="w-10 h-10" />
                       </div>
-                      <div className="space-y-2 px-4">
-                        <h2 className="text-lg font-bold" style={{ color: c.text }}>Ngola Tutor</h2>
-                        <p className="text-xs" style={{ color: c.textMuted }}>
-                          Your AI-powered educational companion. How can I help you study today?
-                        </p>
-                      </div>
                       
                       <div className="flex flex-col gap-2 w-full max-w-[280px] mt-4">
                         {[

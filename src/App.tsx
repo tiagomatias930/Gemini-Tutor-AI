@@ -1341,11 +1341,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
           systemInstruction: buildSystemInstruction(currentMessages, studentContext),
           tools: [{ googleSearch: {} }],
-          turnTaking: {
-            voiceActivityDetection: {
-              noiseThreshold: 0.95, // High threshold to prevent background noise from interrupting
-              speechThreshold: 0.95  // Require clear speech to trigger a turn break
-            }
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              silenceDurationMs: 4000,
+            },
           },
           ...({ inputAudioTranscription: {}, outputAudioTranscription: {} } as any),
         },
@@ -1461,12 +1460,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           <button onClick={() => setLang(prev => prev === 'en' ? 'pt' : 'en')} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
             <span className="text-base">{lang === 'en' ? '🇺🇸' : '🇦🇴'}</span>
             {lang.toUpperCase()}
-          </button>
-
-          {/* Deaf Mode Toggle */}
-          <button onClick={() => setIsDeafMode(!isDeafMode)} className={`px-3 py-2 rounded-xl border transition-all active:scale-90 flex items-center gap-2 text-[11px] font-bold ${isDeafMode ? 'bg-purple-600 text-white border-purple-500 shadow-lg shadow-purple-500/20' : isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
-            <Volume2 size={14} />
-            {isDeafMode ? 'LIBRAS ON' : 'LIBRAS OFF'}
           </button>
 
           {/* Vision Assist Toggle */}

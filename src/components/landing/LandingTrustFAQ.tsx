@@ -8,9 +8,8 @@ export const LandingTrust: React.FC<LandingSectionProps> = ({ c, isDark }) => {
   const partners = [
     { name: 'Google Gemini', Icon: Google },
     { name: '42 Luanda', Icon: Work },
-    { name: 'GitHub Education', Icon: GitHub },
-    { name: 'Dom Bosco', Icon: School }
-  ];
+    { name: 'GitHub Education', Icon: GitHub }
+    ];
 
   return (
     <div className="py-12 border-y" style={{ borderColor: c.border, background: c.bgAlt }}>

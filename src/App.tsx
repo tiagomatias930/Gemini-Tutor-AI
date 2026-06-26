@@ -1343,7 +1343,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           tools: [{ googleSearch: {} }],
           realtimeInputConfig: {
             automaticActivityDetection: {
-              silenceDurationMs: 4000,
+              silenceDurationMs: 1000,
             },
           },
           ...({ inputAudioTranscription: {}, outputAudioTranscription: {} } as any),

@@ -461,9 +461,9 @@ function DesktopChatContent({
   lang: Lang;
 }) {
   const getFileIcon = (mimeType: string) => {
-    if (mimeType.startsWith('image/')) return '🖼️';
-    if (mimeType.startsWith('video/')) return '🎥';
-    if (mimeType === 'application/pdf') return '📄';
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType === 'application/pdf') return 'pdf';
     return '📝';
   };
 
@@ -878,8 +878,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     } catch {
       setError(
         lang === 'pt'
-          ? 'Não foi possível aceder à câmara. 📷 Por favor, verifique as permissões de acesso no seu navegador.'
-          : 'Could not access camera. 📷 Please check browser access permissions.'
+          ? 'Não foi possível aceder à câmara.  Por favor, verifique as permissões de acesso no seu navegador.'
+          : 'Could not access camera. Please check browser access permissions.'
       );
     }
   }, [lang]);
@@ -1916,7 +1916,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                   {guideStep === 0 && (
                     <div className="space-y-4">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center mb-4">
+                      <div className="w-12 h-12 rounded-2xl text-blue-500 flex items-center justify-center mb-4">
                         <MessageSquare size={24} />
                       </div>
                       <h4 className="text-lg font-bold">{t(lang, 'guideStep1Title')}</h4>
@@ -1924,7 +1924,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                         {t(lang, 'guideStep1Desc')}
                       </p>
                       <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
-                        <span className="p-1 rounded-lg bg-blue-500/10 text-blue-500 font-bold">💡 Tip</span>
                         <span>{lang === 'pt' ? 'Podes clicar nos botões de sugestões para começar logo a testar!' : 'You can click suggestion buttons to start testing right away!'}</span>
                       </div>
                     </div>
@@ -1932,7 +1931,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
                   {guideStep === 1 && (
                     <div className="space-y-4">
-                      <div className="w-12 h-12 rounded-2xl bg-red-500/15 text-red-500 flex items-center justify-center mb-4 animate-pulse">
+                      <div className="w-12 h-12 rounded-2xl text-red-500 flex items-center justify-center mb-4 animate-pulse">
                         <Mic size={24} />
                       </div>
                       <h4 className="text-lg font-bold">{t(lang, 'guideStep2Title')}</h4>
@@ -1940,7 +1939,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                         {t(lang, 'guideStep2Desc')}
                       </p>
                       <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
-                        <span className="p-1 rounded-lg bg-red-500/10 text-red-500 font-bold">🎙️ Call</span>
                         <span>{lang === 'pt' ? 'O microfone flutuante ativa a comunicação mãos-livres por voz!' : 'The floating microphone activates hands-free voice communication!'}</span>
                       </div>
                     </div>
@@ -1948,7 +1946,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
                   {guideStep === 2 && (
                     <div className="space-y-4">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center mb-4">
+                      <div className="w-12 h-12 rounded-2xl text-indigo-500 flex items-center justify-center mb-4">
                         <Palette size={24} />
                       </div>
                       <h4 className="text-lg font-bold">{t(lang, 'guideStep3Title')}</h4>
@@ -1956,7 +1954,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                         {t(lang, 'guideStep3Desc')}
                       </p>
                       <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
-                        <span className="p-1 rounded-lg bg-indigo-500/10 text-indigo-500 font-bold">✏️ Whiteboard</span>
                         <span>{lang === 'pt' ? 'Carrega em "Visualizar" nas respostas para gerar ilustrações.' : 'Click "Visualize" on replies to generate illustrations.'}</span>
                       </div>
                     </div>
@@ -1965,10 +1962,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   {guideStep === 3 && (
                     <div className="space-y-4">
                       <div className="flex gap-2 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl bg-green text-green-500 flex items-center justify-center">
                           <Camera size={24} />
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl text-blue-500 flex items-center justify-center">
                           <Paperclip size={24} />
                         </div>
                       </div>
@@ -1977,7 +1974,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                         {t(lang, 'guideStep4Desc')}
                       </p>
                       <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
-                        <span className="p-1 rounded-lg bg-amber-500/10 text-amber-500 font-bold">📄 Multi-Modal</span>
                         <span>{lang === 'pt' ? 'Tira foto ou carrega PDFs para resolver exercícios diretamente.' : 'Take a photo or upload PDFs to solve exercises directly.'}</span>
                       </div>
                     </div>
@@ -1986,10 +1982,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   {guideStep === 4 && (
                     <div className="space-y-4">
                       <div className="flex gap-2 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl text-purple-500 flex items-center justify-center">
                           <Volume2 size={24} />
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl text-amber-500 flex items-center justify-center">
                           <Eye size={24} />
                         </div>
                       </div>
@@ -1998,7 +1994,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                         {t(lang, 'guideStep5Desc')}
                       </p>
                       <div className={`p-3 rounded-2xl border text-xs flex items-center gap-3 ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
-                        <span className="p-1 rounded-lg bg-purple-500/10 text-purple-500 font-bold">♿ Assist</span>
                         <span>{lang === 'pt' ? 'Ideal para acessibilidade (libras e facilidades visuais/auditivas).' : 'Ideal for accessibility (libras and visual/auditory aids).'}</span>
                       </div>
                     </div>

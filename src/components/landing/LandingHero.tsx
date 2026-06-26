@@ -42,25 +42,21 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               <p style={{ color: c.textMuted }} className="text-xl">{t(lang, 'heroDesc')}</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button 
                 onClick={onStartLearning}
                 style={{ background: c.accent }}
-                className="px-8 py-4 text-white rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center gap-2 group"
+                className="px-8 py-4 text-white rounded-lg font-semibold hover:opacity-90 flex items-center justify-center gap-2"
               >
                 {t(lang, 'heroBtn1')}
-                <ArrowForward sx={{ fontSize: 20, transition: 'transform 0.2s' }} className="group-hover:translate-x-1" />
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                <ArrowForward sx={{ fontSize: 20 }} />
+              </button>
+              <button 
                 onClick={() => scrollToSection('features')}
-                style={{ border: `2px solid ${c.border}`, color: c.text, transition: 'all 0.2s' }}
+                style={{ border: `2px solid ${c.border}`, color: c.text }}
                 className="px-8 py-4 rounded-lg font-semibold hover:opacity-80"
               >
                 {t(lang, 'heroBtn2')}
-              </motion.button>
+              </button>
             </div>
           </motion.div>
 

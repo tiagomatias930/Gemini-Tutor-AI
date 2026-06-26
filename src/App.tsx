@@ -1157,17 +1157,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
       const workletCode = `
         class PCMProcessor extends AudioWorkletProcessor {
-          constructor() { super(); this._buf = new Float32Array(4096); this._off = 0; }
+          constructor() { super(); this._buf = new Float32Array(2048); this._off = 0; }
           process(inputs) {
             const ch = inputs[0]?.[0];
             if (ch) {
               for (let i = 0; i < ch.length; i++) {
                 this._buf[this._off++] = ch[i];
-                if (this._off >= 4096) {
-                  const pcm = new Int16Array(4096);
-                  for (let j = 0; j < 4096; j++) pcm[j] = Math.max(-32768, Math.min(32767, Math.round(this._buf[j] * 32767)));
+                if (this._off >= 2048) {
+                  const pcm = new Int16Array(2048);
+                  for (let j = 0; j < 2048; j++) pcm[j] = Math.max(-32768, Math.min(32767, Math.round(this._buf[j] * 32767)));
                   this.port.postMessage(pcm.buffer, [pcm.buffer]);
-                  this._buf = new Float32Array(4096); this._off = 0;
+                  this._buf = new Float32Array(2048); this._off = 0;
                 }
               }
             }
@@ -1343,7 +1343,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           tools: [{ googleSearch: {} }],
           realtimeInputConfig: {
             automaticActivityDetection: {
-              silenceDurationMs: 1000,
+              silenceDurationMs: 400,
             },
           },
           ...({ inputAudioTranscription: {}, outputAudioTranscription: {} } as any),
@@ -1577,7 +1577,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             <div className="flex flex-col gap-3">
               <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
                 className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm
-                            transition-all shadow-xl hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-[#ea4335] text-white shadow-red-500/20' : 'bg-[#1a73e8] text-white shadow-blue-500/20'
+                            transition-all shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-[#ea4335] text-white shadow-red-500/20' : 'bg-[#1a73e8] text-white shadow-blue-500/20'
                   }`}>
                 {isConnected ? <><MicOff size={18} /> Interromper sessão</>
                   : isConnecting ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">

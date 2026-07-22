@@ -150,7 +150,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         </div>
         
-        <div className="flex justify-between px-2">
+        <div className="hidden md:flex justify-between px-2">
           <p className="text-[10px] text-gray-400 font-medium">
             Shift + Enter for new line
           </p>

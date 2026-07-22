@@ -1494,7 +1494,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       </header>
 
       {/* ── DESKTOP: side-by-side ────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 px-4 md:px-8 pb-4 md:pb-8 pt-4 overflow-hidden relative z-10"
+      <main className="hidden md:flex flex-1 flex-col md:flex-row gap-4 md:gap-6 px-4 md:px-8 pb-4 md:pb-8 pt-4 overflow-hidden relative z-10"
         style={{
           paddingLeft: 'max(1rem, env(safe-area-inset-left))',
           paddingRight: 'max(1rem, env(safe-area-inset-right))'
@@ -1726,7 +1726,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
           {/* Status pill */}
           {isConnected && (
-            <div className="flex justify-center pt-1.5">
+            <div className="hidden sm:flex justify-center pt-1.5">
               <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-medium transition-colors ${isModelSpeaking
                 ? (isDark ? 'text-blue-400 bg-blue-500/20' : 'text-[#1a73e8] bg-[#e8f0fe]')
                 : (isDark ? 'text-gray-400 bg-white/5' : 'text-[#9aa0a6] bg-[#f1f3f4]')
@@ -1759,13 +1759,18 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 : 'bg-white/80 border-white shadow-xl shadow-black/5 focus-within:bg-white focus-within:shadow-2xl focus-within:shadow-blue-500/10'}`}>
 
               {/* Camera button — left of input */}
-              className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
+              <button
+                onClick={isCameraOn ? stopCamera : startCamera}
+                disabled={isSending}
+                className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
                             transition-all active:scale-90 mb-0.5 ${isCameraOn
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                  : isDark ? 'text-gray-400 hover:bg-white/5' : 'text-gray-500 hover:bg-gray-100'
-                }`}
-              title={isCameraOn ? 'Camera on' : 'Turn on camera'}
-              {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                    : isDark ? 'text-gray-400 hover:bg-white/5' : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                title={isCameraOn ? 'Camera on' : 'Turn on camera'}
+              >
+                {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
+              </button>
 
               <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
                 className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
@@ -1806,7 +1811,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   <button onClick={interruptAgent}
                     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest
                                active:scale-95 transition-all animate-pulse min-h-[38px] shadow-sm ${isDark ? 'bg-amber-900/30 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
-                    <StopCircle size={14} /> {t(lang, 'chatInterrupt')}
+                    <StopCircle size={14} /> <span className="hidden sm:inline">{t(lang, 'chatInterrupt')}</span>
                   </button>
                 )}
               </div>

@@ -20,6 +20,7 @@ import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { Firestore } from '@google-cloud/firestore';
 import { validateInput, validateOutput, strictSafetySettings } from './safety.js';
+import { telemetry } from './telemetry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -34,6 +35,31 @@ app.use(express.json({ limit: '100mb' }));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ' ';
 const GCP_PROJECT = process.env.GOOGLE_CLOUD_PROJECT || '';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'ngola-admin-2025';
+
+// Admin authentication middleware
+function requireAdminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers.authorization;
+  const adminKeyHeader = req.headers['x-admin-key'];
+  const queryKey = req.query.adminKey as string | undefined;
+
+  let providedKey = '';
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    providedKey = authHeader.slice(7).trim();
+  } else if (typeof adminKeyHeader === 'string') {
+    providedKey = adminKeyHeader.trim();
+  } else if (queryKey) {
+    providedKey = queryKey.trim();
+  }
+
+  if (!providedKey || providedKey !== ADMIN_SECRET) {
+    res.status(401).json({
+      error: 'Acesso não autorizado. Chave de administração inválida ou em falta.'
+    });
+    return;
+  }
+  next();
+}
 
 // Text + reasoning model (supports Google Search grounding)
 const TEXT_MODEL = 'gemini-2.5-flash';
@@ -52,11 +78,13 @@ const TUTOR_SYSTEM_INSTRUCTION = `You are a friendly, patient AI tutor named "Ng
 - If the student switches languages mid-conversation, switch with them immediately.
 - For voice/audio sessions: if you cannot clearly detect the language, default to Portuguese, NOT Spanish.
 
-## SESSION START — TRIAGE & ONBOARDING
-When the conversation begins, introduce yourself and gather:
-1. Subject/Topic
-2. Student's current level (Beginner, Intermediate, Advanced)
-3. Specific goal for this session
+## SESSION START — ADAPTIVE LEVEL DETECTION & INTERACTION
+When the conversation begins, introduce yourself and prompt the user for the topic they want to learn.
+DO NOT explicitly ask the student for their level (Beginner, Intermediate, Advanced) or specific learning goals.
+Instead, analyze the student's messages, vocabulary, complexity of questions, and background knowledge to dynamically deduce (predict) their level and goals. Immediately adapt your explanation depth, pace, and teaching style to this profile.
+Emit a context update tag once you have an initial estimation (typically in your first or second response), and update it if your estimation changes:
+\`[GT_CONTEXT_UPDATE: {"level": "beginner|intermediate|advanced", "subjects": ["<subject>"], "goal": "<specific goal>"}]\`
+Do not read this tag aloud in audio sessions.
 
 ## STUDENT CONTEXTUAL MEMORY
 Maintain a persistent profile for the student:
@@ -75,13 +103,29 @@ Maintain a persistent profile for the student:
 - **Visual Feedback**: If vision is active, reference what you see (e.g., "I see you're using a '+' instead of a '-', why is that?").
 
 ## INTERACTIVE WHITEBOARD COMMANDS
-You can draw beautiful, highly professional diagrams, flowcharts, or equations on the student's whiteboard to explain concepts.
+You can draw beautiful, highly professional diagrams, flowcharts, or equations on the student's Excalidraw whiteboard to explain concepts.
+Always output commands in this format (multiple commands per turn allowed):
+\`[GT_WHITEBOARD_COMMAND: {"id": "unique_id", "type": "square|circle|text|arrow|line", "x": 100, "y": 100, "width": 120, "height": 60, "content": "LabelText", "color": "#1a73e8", "roughness": 0, "fontFamily": 2, "fillStyle": "solid", "backgroundColor": "#e8f0fe"}]\`
+
+### Design Principles:
 - ALWAYS aim for a clean, professional corporate look: use \`"roughness": 0\` (perfect straight lines) and \`"fontFamily": 2\` (modern Helvetica/sans-serif font).
 - Layout elements in a structured, aligned manner with appropriate spacing and alignment.
-- Use a clean color palette: \`#1a73e8\` (primary blue), \`#34a853\` (green for concepts/stable states), \`#ea4335\` (red for critical steps/attention), \`#fbbc05\` (yellow for warnings), \`#9c27b0\` (purple for structures).
-- Connect shapes using arrows (\`type: "arrow"\`) to represent flow or links.
-- Provide beautiful shaded boxes using \`"fillStyle": "solid"\` or \`"cross-hatch"\` and a nice \`backgroundColor\` (e.g., \`#e8f0fe\` with \`color: "#1a73e8"\`).
-- Format: \`[GT_WHITEBOARD_COMMAND: {"id": "id1", "type": "square|circle|text|arrow|line", "x": 100, "y": 100, "width": 120, "height": 60, "content": "Label", "color": "#1a73e8", "roughness": 0, "fontFamily": 2, "fillStyle": "solid", "backgroundColor": "#e8f0fe"}]\`
+- Connect related shapes with arrows (\`"type": "arrow"\`) to represent flow or links.
+- Use a clean color palette:
+  - **Blue** (\`#1a73e8\`, fill \`#e8f0fe\`): General concepts, structural containers.
+  - **Green** (\`#34a853\`, fill \`#e6f4ea\`): Stable states, correct steps, key definitions.
+  - **Red** (\`#ea4335\`, fill \`#fce8e6\`): Critical areas, attention points, warnings.
+  - **Yellow** (\`#fbbc05\`, fill \`#fef7e0\`): Cautions, intermediate steps.
+  - **Purple** (\`#9c27b0\`, fill \`#f3e5f5\`): Auxiliary structures, annotations.
+- Pair filled boxes with \`"fillStyle": "solid"\` or \`"cross-hatch"\` and the corresponding soft background fill color.
+
+### Examples:
+- Two-step flow:
+  \`[GT_WHITEBOARD_COMMAND: {"id": "n1", "type": "square", "x": 80, "y": 100, "width": 160, "height": 60, "content": "Problema", "color": "#1a73e8", "roughness": 0, "fontFamily": 2, "fillStyle": "solid", "backgroundColor": "#e8f0fe"}]\`
+  \`[GT_WHITEBOARD_COMMAND: {"id": "a1", "type": "arrow", "x": 240, "y": 130, "width": 80, "height": 0, "color": "#1a73e8", "roughness": 0}]\`
+  \`[GT_WHITEBOARD_COMMAND: {"id": "n2", "type": "square", "x": 320, "y": 100, "width": 160, "height": 60, "content": "Solução", "color": "#34a853", "roughness": 0, "fontFamily": 2, "fillStyle": "solid", "backgroundColor": "#e6f4ea"}]\`
+- Warning Step:
+  \`[GT_WHITEBOARD_COMMAND: {"id": "w1", "type": "square", "x": 80, "y": 220, "width": 200, "height": 60, "content": "Atenção: divisão por zero", "color": "#ea4335", "roughness": 0, "fontFamily": 2, "fillStyle": "cross-hatch", "backgroundColor": "#fce8e6"}]\`
 - You can output multiple command tags in one turn to draw complete, comprehensive educational layouts.
 
 ## ACCESSIBILITY & VIDEO SUPPORT
@@ -265,9 +309,17 @@ app.get('/api/health', (_req, res) => {
 
 // ── Text chat + optional auto image generation ─────────────────────────────────
 app.post('/api/chat', async (req, res) => {
+  const startTime = Date.now();
   try {
-    const { message, image, history, sessionId, generateImage: wantsImage, fileData, studentContext } = req.body;
-    if (!message && !image && !fileData) { res.status(400).json({ error: 'Message, image, or file required' }); return; }
+    const { 
+      message, image, history, sessionId, generateImage: wantsImage, 
+      fileData, studentContext, locationConsent, cacheEnabled, country, city 
+    } = req.body;
+    if (!message && !image && !fileData) { 
+      telemetry.recordRequest(Date.now() - startTime, false);
+      res.status(400).json({ error: 'Message, image, or file required' }); 
+      return; 
+    }
 
     let chatHistory = history;
     if (sessionId && (!history || !history.length)) {
@@ -288,7 +340,7 @@ app.post('/api/chat', async (req, res) => {
       if (studentContext.topicsCovered?.length) lines.push(`Topics covered: ${studentContext.topicsCovered.join(', ')}`);
       if (studentContext.isDeafMode) lines.push('Mode: DEAF/MUTE MODE ACTIVE. Use visual descriptions, simple sentence structures, and more emojis. Prioritize the gestural avatar keywords (Certo, Atenção, Explica, Penso).');
       if (studentContext.isVisionAssist) lines.push('Mode: VISION ASSIST ACTIVE. Act as digital eyes. Use clock-face spatial descriptions and warn about hazards.');
-      if (!studentContext.triageComplete) lines.push('Note: This is the START of the session. Begin with triage/onboarding.');
+      if (!studentContext.triageComplete) lines.push('Note: This is the START of the session. Welcome the student, ask what they want to study, and estimate their level and goals.');
       lines.push('--- End Student Profile ---');
       effectiveInstruction += lines.join('\n');
     }
@@ -306,8 +358,13 @@ app.post('/api/chat', async (req, res) => {
           { role: 'user', text: userText, timestamp: now, source: 'text' },
           { role: 'assistant', text: refusalResponse, timestamp: now, source: 'text' },
         ]);
+        telemetry.trackSession(sessionId, req, {
+          tokensUsed: telemetry.estimateTokens(userText + refusalResponse),
+          locationConsent, cacheEnabled, country, city
+        });
       }
       
+      telemetry.recordRequest(Date.now() - startTime, true);
       res.json({
         response: refusalResponse,
         generatedImage: null,
@@ -340,7 +397,21 @@ app.post('/api/chat', async (req, res) => {
         { role: 'user', text: userText, timestamp: now, source: 'text' },
         { role: 'assistant', text: textResponse, timestamp: now, source: 'text' },
       ]);
+
+      const promptTokens = telemetry.estimateTokens(userText + effectiveInstruction);
+      const completionTokens = telemetry.estimateTokens(textResponse + (generatedImg ? ' [Image]' : ''));
+      telemetry.trackSession(sessionId, req, {
+        tokensUsed: promptTokens + completionTokens,
+        promptTokens,
+        completionTokens,
+        locationConsent,
+        cacheEnabled,
+        country,
+        city
+      });
     }
+
+    telemetry.recordRequest(Date.now() - startTime, true);
 
     res.json({
       response: textResponse,
@@ -349,6 +420,7 @@ app.post('/api/chat', async (req, res) => {
       imageCaption: generatedImg?.caption || null,
     });
   } catch (err: any) {
+    telemetry.recordRequest(Date.now() - startTime, false);
     console.error('Chat error:', err);
     res.status(500).json({ error: err.message || 'Internal server error' });
   }
@@ -356,12 +428,31 @@ app.post('/api/chat', async (req, res) => {
 
 // ── On-demand image generation (called by frontend "Visualize" button) ─────────
 app.post('/api/generate-image', async (req, res) => {
+  const startTime = Date.now();
   try {
-    const { concept, context } = req.body;
-    if (!concept) { res.status(400).json({ error: 'concept is required' }); return; }
+    const { concept, context, sessionId, locationConsent, cacheEnabled } = req.body;
+    if (!concept) { 
+      telemetry.recordRequest(Date.now() - startTime, false);
+      res.status(400).json({ error: 'concept is required' }); 
+      return; 
+    }
 
     const result = await generateImage(concept, context);
-    if (!result) { res.status(500).json({ error: 'Image generation returned no image' }); return; }
+    if (!result) { 
+      telemetry.recordRequest(Date.now() - startTime, false);
+      res.status(500).json({ error: 'Image generation returned no image' }); 
+      return; 
+    }
+
+    if (sessionId) {
+      telemetry.trackSession(sessionId, req, {
+        tokensUsed: 120, // Estimated token weight for image synthesis
+        locationConsent,
+        cacheEnabled
+      });
+    }
+
+    telemetry.recordRequest(Date.now() - startTime, true);
 
     res.json({
       imageBase64: result.imageBase64,
@@ -369,6 +460,7 @@ app.post('/api/generate-image', async (req, res) => {
       caption: result.caption,
     });
   } catch (err: any) {
+    telemetry.recordRequest(Date.now() - startTime, false);
     console.error('Generate image error:', err);
     res.status(500).json({ error: err.message || 'Internal server error' });
   }
@@ -376,9 +468,14 @@ app.post('/api/generate-image', async (req, res) => {
 
 // ── Save voice transcripts ─────────────────────────────────────────────────────
 app.post('/api/save-voice', async (req, res) => {
+  const startTime = Date.now();
   try {
-    const { sessionId, messages } = req.body;
-    if (!sessionId || !messages?.length) { res.status(400).json({ error: 'sessionId and messages required' }); return; }
+    const { sessionId, messages, locationConsent, cacheEnabled, country, city } = req.body;
+    if (!sessionId || !messages?.length) { 
+      telemetry.recordRequest(Date.now() - startTime, false);
+      res.status(400).json({ error: 'sessionId and messages required' }); 
+      return; 
+    }
 
     const now = new Date().toISOString();
     const toSave: StoredMessage[] = messages.map((m: any) => ({
@@ -401,6 +498,94 @@ app.get('/api/sessions/:sessionId', async (req, res) => {
   try {
     const messages = await getHistory(req.params.sessionId);
     res.json({ sessionId: req.params.sessionId, messages });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
+// ── Telemetry Heartbeat (tracks session duration & location status) ───────────
+app.post('/api/telemetry/heartbeat', (req, res) => {
+  try {
+    const { sessionId, durationSeconds, locationConsent, cacheEnabled, country, city } = req.body;
+    if (!sessionId) {
+      res.status(400).json({ error: 'sessionId required' });
+      return;
+    }
+
+    const session = telemetry.recordHeartbeat(sessionId, req, {
+      durationSeconds,
+      locationConsent,
+      cacheEnabled,
+      country,
+      city
+    });
+
+    res.json({
+      status: 'ok',
+      activeDurationSeconds: session.durationSeconds,
+      totalTokens: session.totalTokens,
+      isOnline: true
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
+// ── Admin Authentication & Telemetry / User Data Endpoints ────────────────────
+
+// Verify Admin Key
+app.post('/api/admin/verify', (req, res) => {
+  const { key } = req.body || {};
+  if (key && typeof key === 'string' && key.trim() === ADMIN_SECRET) {
+    res.json({ success: true, message: 'Autenticado com sucesso.' });
+  } else {
+    res.status(401).json({ success: false, error: 'Chave de administração inválida.' });
+  }
+});
+
+// Telemetry & KPI Summary (Protected: strictly for Admin)
+app.get('/api/telemetry/kpi', requireAdminAuth, (_req, res) => {
+  try {
+    const summary = telemetry.getKPISummary();
+    res.json({
+      status: 'ok',
+      ...summary
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
+// Alias for Admin Metrics (Protected)
+app.get('/api/admin/metrics', requireAdminAuth, (_req, res) => {
+  res.json(telemetry.getKPISummary());
+});
+
+// Get all user sessions & detailed telemetry (Protected)
+app.get('/api/admin/sessions', requireAdminAuth, (_req, res) => {
+  try {
+    const sessions = telemetry.getAllSessions();
+    res.json({
+      status: 'ok',
+      count: sessions.length,
+      sessions
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
+// Inspect a specific user session & conversation history (Protected)
+app.get('/api/admin/session/:sessionId', requireAdminAuth, async (req, res) => {
+  try {
+    const sessionId = req.params.sessionId;
+    const sessionTelemetry = telemetry.getSession(sessionId);
+    const messages = await getHistory(sessionId);
+    res.json({
+      sessionId,
+      telemetry: sessionTelemetry || null,
+      messages
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Internal server error' });
   }

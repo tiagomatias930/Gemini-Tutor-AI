@@ -1,0 +1,68 @@
+{
+  "totalTokensConsumed": 2125,
+  "totalRequests": 2,
+  "successfulRequests": 2,
+  "failedRequests": 0,
+  "sessions": [
+    [
+      "session_51gd0vs2_1786923491148",
+      {
+        "sessionId": "session_51gd0vs2_1786923491148",
+        "ip": "::ffff:127.0.0.1",
+        "country": "Angola 🇦🇴",
+        "city": "Luanda",
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "startTime": 1786923491188,
+        "lastHeartbeat": 1786923491193,
+        "durationSeconds": 20,
+        "totalTokens": 0,
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "messageCount": 1,
+        "isOnline": false,
+        "cacheEnabled": true,
+        "locationConsent": true
+      }
+    ],
+    [
+      "session_1786923505562_kqniaba",
+      {
+        "sessionId": "session_1786923505562_kqniaba",
+        "ip": "::ffff:127.0.0.1",
+        "country": "Angola 🇦🇴",
+        "city": "Luanda",
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "startTime": 1786923520147,
+        "lastHeartbeat": 1786923623747,
+        "durationSeconds": 103,
+        "totalTokens": 2125,
+        "promptTokens": 1910,
+        "completionTokens": 215,
+        "messageCount": 2,
+        "isOnline": false,
+        "cacheEnabled": true,
+        "locationConsent": true
+      }
+    ],
+    [
+      "session_vghhrfgx_1786924454391",
+      {
+        "sessionId": "session_vghhrfgx_1786924454391",
+        "ip": "::ffff:127.0.0.1",
+        "country": "Angola 🇦🇴",
+        "city": "Luanda",
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "startTime": 1786924491517,
+        "lastHeartbeat": 1786924756493,
+        "durationSeconds": 264,
+        "totalTokens": 0,
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "messageCount": 1,
+        "isOnline": true,
+        "cacheEnabled": true,
+        "locationConsent": true
+      }
+    ]
+  ]
+}

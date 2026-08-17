@@ -6,6 +6,9 @@ import { LandingFeatures, LandingHowItWorks } from './components/landing/Landing
 import { LandingCaseStudies, LandingAbout, LandingCTA } from './components/landing/LandingFooterSections';
 import { LandingTrust, LandingFAQ } from './components/landing/LandingTrustFAQ';
 import { useTheme } from './contexts/ThemeContext';
+import { Sparkles, ShieldCheck } from 'lucide-react';
+import { TermsAndPrivacyModal } from './components/legal/TermsAndPrivacyModal';
+import { getConsentPreferences, startTelemetryHeartbeat } from './utils/telemetryClient';
 
 interface LandingPageProps {
   onStartLearning: () => void;
@@ -17,7 +20,14 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
   const { theme, c, isDark, toggleTheme } = useTheme();
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lp_lang') as Lang) || 'en');
 
+  const [showTermsModal, setShowTermsModal] = useState(() => !getConsentPreferences().acceptedTerms);
+
   useEffect(() => { localStorage.setItem('lp_lang', lang); }, [lang]);
+
+  useEffect(() => {
+    const cleanup = startTelemetryHeartbeat();
+    return () => cleanup();
+  }, []);
 
   const setTheme = () => toggleTheme();
 
@@ -41,7 +51,7 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
 
   return (
     <div style={{ background: c.bg, color: c.text, transition: 'background 0.3s, color 0.3s' }} className="w-full min-h-screen">
-      <LandingNavbar 
+      <LandingNavbar
         {...commonProps}
         activeNav={activeNav}
         mobileMenuOpen={mobileMenuOpen}
@@ -53,7 +63,7 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
       />
 
       <main>
-        <LandingHero 
+        <LandingHero
           {...commonProps}
           onStartLearning={onStartLearning}
           scrollToSection={scrollToSection}
@@ -62,38 +72,56 @@ export function LandingPage({ onStartLearning }: LandingPageProps) {
         <LandingTrust {...commonProps} />
 
         <LandingFeatures {...commonProps} />
-        
+
         <LandingHowItWorks {...commonProps} />
-        
+
         <LandingCaseStudies {...commonProps} />
-        
+
         <LandingAbout {...commonProps} />
-        
+
         <LandingFAQ {...commonProps} />
-        
-        <LandingCTA 
+
+        <LandingCTA
           {...commonProps}
           onStartLearning={onStartLearning}
         />
       </main>
 
-      {/* Basic Footer */}
-      <footer className="py-12 px-4 border-t" style={{ borderColor: c.border, background: c.bg }}>
+      {/* Modern Accessible Footer */}
+      <footer className="py-14 px-4 sm:px-6 lg:px-8 border-t" style={{ borderColor: c.border, background: c.bgAlt }}>
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-             <span className="text-xl font-bold">
-               <span className="text-[#4285f4]">N</span><span className="text-[#ea4335]">g</span>
-               <span className="text-[#fbbc05]">o</span><span className="text-[#4285f4]">l</span>
-               <span className="text-[#34a853]">a</span><span className="text-[#ea4335]"> </span>
-               <span style={{ color: c.text }}> Tutor</span>
-             </span>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl to-indigo-600 p-0.5">
+              <div className="w-full h-full rounded-[10px] flex items-center justify-center bg-white">
+                <img src="/logoGT.png" alt="logo" />
+              </div>
+            </div>
+            <span className="font-heading font-extrabold text-lg tracking-tight">
+              Ngola<span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">Tutor</span> AI
+            </span>
           </div>
-          <p style={{ color: c.textMuted }} className="text-sm">
-            © {new Date().getFullYear()} Ngola Tutor AI. All rights reserved.
+
+          <div className="flex items-center gap-6 text-xs font-semibold" style={{ color: c.textMuted }}>
+            <button
+              onClick={() => setShowTermsModal(true)}
+              className="hover:text-blue-500 transition-colors flex items-center gap-1.5"
+            >
+              <ShieldCheck size={14} className="text-blue-500" />
+              <span>Termos & Privacidade</span>
+            </button>
+          </div>
+
+          <p style={{ color: c.textMuted }} className="text-xs sm:text-sm flex items-center gap-1">
+            © {new Date().getFullYear()} Ngola Tutor AI. Educação e Ensino para todos.
           </p>
         </div>
       </footer>
+
+      {/* Terms, Telemetry Notice & Cache Permission Modal */}
+      <TermsAndPrivacyModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
     </div>
   );
 }
-

@@ -1,16 +1,34 @@
 @import "tailwindcss";
 
-/* ── Safe area insets (iPhone notch / Dynamic Island / Android) ── */
+/* ── Typography & Design Tokens ─────────────────────────────────────────── */
 :root {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Safe area insets (iPhone notch / Dynamic Island / Android) */
   --sat: env(safe-area-inset-top, 0px);
   --sar: env(safe-area-inset-right, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
 }
 
-/* dvh: dynamic viewport height — exclui a barra de endereço do browser mobile */
+/* Base resets & typography */
 html, body, #root {
   height: 100%;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono);
 }
 
 body {
@@ -18,20 +36,25 @@ body {
   overscroll-behavior: none;
 }
 
-/* Scroll suave em todas as áreas de scroll */
+/* Smooth scrolling */
 * {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Previne zoom no double-tap em iOS */
+/* Prevent double-tap zoom on mobile */
 button, input, textarea, select {
   touch-action: manipulation;
 }
 
-/* Remove o outline padrão em mobile (substituído por focus-visible) */
+/* Accessible focus styling */
 :focus:not(:focus-visible) {
   outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 /* Safe area utilities */
@@ -40,11 +63,58 @@ button, input, textarea, select {
 .pl-safe { padding-left: env(safe-area-inset-left, 0px); }
 .pr-safe { padding-right: env(safe-area-inset-right, 0px); }
 
-/* Altura dinâmica — funciona em todos os browsers mobile */
+/* Dynamic viewport height */
 .h-dvh { height: 100dvh; }
 .min-h-dvh { min-height: 100dvh; }
 
-/* Scrollbar fina e discreta */
-.overflow-y-auto::-webkit-scrollbar { width: 4px; }
-.overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
-.overflow-y-auto::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 2px; }
+/* Custom Sleek Scrollbar */
+.custom-scrollbar::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .glass-panel,
+[data-theme="dark"] .glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+/* Subtle glowing accent utilities */
+.glow-primary {
+  box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.35);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
+}
+
+.glow-amber {
+  box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.35);
+}

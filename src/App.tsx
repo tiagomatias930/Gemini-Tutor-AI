@@ -4,20 +4,30 @@ import {
   Mic, MicOff, Sparkles, Camera, CameraOff,
   BookOpen, ArrowRight, Volume2, MessageSquare,
   StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn, Paperclip, FileText,
-  Moon, Sun, Eye, Edit3, Search
+  Moon, Sun, Eye, Edit3, Search, Activity, ShieldCheck, WifiOff, Wifi, HardDrive
 } from 'lucide-react';
 import { LandingPage } from './LandingPage';
 import { useTheme } from './contexts/ThemeContext';
 import { t, type Lang } from './i18n';
 import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
 import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
+import { TermsAndPrivacyModal } from './components/legal/TermsAndPrivacyModal';
+import { AdminDashboard } from './components/admin/AdminDashboard';
+import {
+  getConsentPreferences, startTelemetryHeartbeat, saveOfflineChatBackup,
+  getOfflineChatBackup, detectClientGeo, getOrCreateSessionId
+} from './utils/telemetryClient';
 // @ts-ignore
 import tutorSkill from './TutorSkill.md?raw';
 
 // ─── VLibras Integration Helper ────────────────────────────────────────────────
 const speakWithVLibras = (text: string) => {
   // Clean up code tags/tokens before sending to VLibras
-  const cleanText = text.replace(/\[GT_WHITEBOARD_COMMAND:[^\]]+\]/g, '').trim();
+  const cleanText = text
+    .replace(/\[GT_WHITEBOARD_COMMAND:[^\]]+\]/g, '')
+    .replace(/\[GT_MEMORY_UPDATE:[^\]]+\]/g, '')
+    .replace(/\[GT_CONTEXT_UPDATE:[^\]]+\]/g, '')
+    .trim();
   if (!cleanText) return;
 
   // 1. Find the VLibras access button and click it to open/activate the widget if not already active
@@ -186,6 +196,7 @@ function MarkdownContent({ text, isUser, isDark }: { text: string; isUser: boole
   const cleanText = text
     .replace(/\[GT_MEMORY_UPDATE:.*?\]/gs, '')
     .replace(/\[GT_WHITEBOARD_COMMAND:.*?\]/gs, '')
+    .replace(/\[GT_CONTEXT_UPDATE:.*?\]/gs, '')
     .trim();
   const lines = cleanText.split('\n');
   const nodes: React.ReactNode[] = [];
@@ -601,6 +612,37 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [showGuide, setShowGuide] = useState(() => localStorage.getItem('gt_hide_guide') !== 'true');
   const [guideStep, setGuideStep] = useState(0);
 
+  // Telemetry, Terms & Offline Resilience States
+  const [showTermsModal, setShowTermsModal] = useState(() => !getConsentPreferences().acceptedTerms);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  // Restore messages from local cache if empty
+  useEffect(() => {
+    const cached = getOfflineChatBackup();
+    if (cached && cached.length > 0 && messages.length === 0) {
+      setMessages(cached);
+    }
+  }, []);
+
+  // Save messages to offline cache on change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveOfflineChatBackup(messages);
+    }
+  }, [messages]);
+
+  // Monitor network status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   // Dynamically compute avatar gesture based on system state and keywords
   const avatarGesture = (() => {
     if (isConnecting) return 'thinking';
@@ -716,6 +758,49 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     }
   }, [messages]);
 
+  // Monitor assistant messages for student context updates
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.role === 'assistant' && lastMsg.text.includes('[GT_CONTEXT_UPDATE:')) {
+      const match = lastMsg.text.match(/\[GT_CONTEXT_UPDATE:\s*(.*?)\]/s);
+      if (match && match[1]) {
+        try {
+          const parsed = JSON.parse(match[1].trim());
+          setStudentContext(prev => ({
+            ...prev,
+            level: parsed.level || prev.level,
+            subjects: parsed.subjects || prev.subjects,
+            learningStyle: parsed.learningStyle || prev.learningStyle,
+            strengths: parsed.strengths || prev.strengths,
+            struggles: parsed.struggles || prev.struggles,
+            triageComplete: true
+          }));
+        } catch (e) {
+          // If not valid JSON, try regex/key-value parsing as fallback
+          const content = match[1].trim();
+          const levelMatch = content.match(/level["']?\s*:\s*["']?(beginner|intermediate|advanced)["']?/i);
+          const subjectsMatch = content.match(/subjects["']?\s*:\s*\[([^\]]+)\]/i);
+
+          const updates: Partial<StudentContext> = {};
+          if (levelMatch && levelMatch[1]) {
+            updates.level = levelMatch[1].toLowerCase();
+          }
+          if (subjectsMatch && subjectsMatch[1]) {
+            updates.subjects = subjectsMatch[1].split(',').map(s => s.replace(/['"]/g, '').trim());
+          }
+
+          if (Object.keys(updates).length > 0) {
+            setStudentContext(prev => ({
+              ...prev,
+              ...updates,
+              triageComplete: true
+            }));
+          }
+        }
+      }
+    }
+  }, [messages]);
+
   // ── Student context (in-session memory) ─────────────────────────────────
   const [studentContext, setStudentContext] = useState<StudentContext>(() => {
     const stored = sessionStorage.getItem('tutor_student_context');
@@ -800,7 +885,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       lines.push('--- End Student Profile ---');
       instruction += lines.join('\n');
     } else if (ctx && !ctx.triageComplete) {
-      instruction += '\n\nNote: This is the START of the session. Begin with the triage/onboarding as described above.';
+      instruction += '\n\nNote: This is the START of the session. Welcome the student, ask what they want to study, and estimate their level and goals.';
     }
 
     // Append conversation history (for Live API which needs it in system instruction)
@@ -980,6 +1065,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       let autoCaption: string | null = null;
 
       try {
+        const consent = getConsentPreferences();
+        const geo = consent.locationConsent ? await detectClientGeo() : { country: 'Anônimo', city: 'Não partilhado' };
+
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -995,6 +1083,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               isDeafMode,
               isVisionAssist
             },
+            locationConsent: consent.locationConsent,
+            cacheEnabled: consent.cacheEnabled,
+            country: geo.country,
+            city: geo.city,
           }),
         });
         if (!res.ok) throw new Error(`Backend ${res.status}`);
@@ -1493,6 +1585,20 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         </div>
       </header>
 
+      {/* Offline Resilience & Network Stability Banner */}
+      {!isOnline && (
+        <div className="mx-4 md:mx-8 mt-3 p-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 flex items-center justify-between text-xs font-semibold z-20 backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <WifiOff size={16} className="shrink-0 animate-pulse text-amber-500" />
+            <span>Instabilidade de Conexão Detectada • Modo Cache Local Ativo: seu histórico e anotações estão seguros.</span>
+          </div>
+          <div className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-amber-500/20 font-bold">
+            <HardDrive size={13} />
+            <span>Cache Offline Ativo</span>
+          </div>
+        </div>
+      )}
+
       {/* ── DESKTOP: side-by-side ────────────────────────────────────────────── */}
       <main className="hidden md:flex flex-1 flex-col md:flex-row gap-4 md:gap-6 px-4 md:px-8 pb-4 md:pb-8 pt-4 overflow-hidden relative z-10"
         style={{
@@ -1517,7 +1623,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             {isConnected && (
               <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5
                               bg-black/55 backdrop-blur-md rounded-full border border-white/10">
-                <span className="w-2 h-2 rounded-full bg-[#ea4335] animate-pulse shadow-[0_0_8px_rgba(234,67,53,0.8)]" />
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
                 <span className="text-white text-[10px] font-bold tracking-widest uppercase">Live Session</span>
               </div>
             )}
@@ -1525,7 +1631,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2
                               px-4 py-2 bg-black/65 backdrop-blur-md rounded-full border border-white/10">
                 {[0, 140, 280].map(d => (
-                  <span key={d} className="w-1.5 rounded-full bg-[#4285f4] animate-bounce"
+                  <span key={d} className="w-1.5 rounded-full bg-blue-500 animate-bounce"
                     style={{ height: '14px', animationDelay: `${d}ms` }} />
                 ))}
                 <span className="text-white text-[10px] font-bold uppercase tracking-wider">Tutor Speaking</span>
@@ -1536,7 +1642,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             <div className="absolute bottom-4 right-4">
               <button onClick={isCameraOn ? stopCamera : startCamera}
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-90 ${isCameraOn
-                  ? 'bg-white text-[#5f6368] hover:scale-105'
+                  ? 'bg-white text-slate-700 hover:scale-105'
                   : 'bg-black/40 text-white hover:bg-black/60 border border-white/20'
                   }`}>
                 {isCameraOn ? <Camera size={18} /> : <CameraOff size={18} />}
@@ -1546,11 +1652,11 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
           {/* Avatar (if active) */}
           {isDeafMode && (
-            <div className="h-[300px] lg:h-[350px] animate-in fade-in zoom-in duration-700 shadow-2xl rounded-3xl overflow-hidden border border-purple-500/30 bg-black/40 backdrop-blur-md relative shrink-0">
-              <div className="bg-purple-600/20 backdrop-blur-md px-4 py-2 flex items-center justify-between border-b border-purple-500/20">
+            <div className="h-[300px] lg:h-[350px] animate-in fade-in zoom-in duration-700 shadow-2xl rounded-3xl overflow-hidden border border-indigo-500/30 bg-black/40 backdrop-blur-md relative shrink-0">
+              <div className="bg-indigo-600/20 backdrop-blur-md px-4 py-2 flex items-center justify-between border-b border-indigo-500/20">
                 <div className="flex items-center gap-2">
-                  <Eye size={14} className="text-purple-400" />
-                  <span className="text-[10px] font-black text-purple-400 uppercase tracking-tighter">Sign Language Avatar</span>
+                  <Eye size={14} className="text-indigo-400" />
+                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Sign Language Avatar</span>
                 </div>
               </div>
               <div className="h-[calc(100%-36px)]">
@@ -1577,7 +1683,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             <div className="flex flex-col gap-3">
               <button onClick={isConnected ? stopSession : startSession} disabled={isConnecting}
                 className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-sm
-                            transition-all shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-[#ea4335] text-white shadow-red-500/20' : 'bg-[#1a73e8] text-white shadow-blue-500/20'
+                            transition-all shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isConnected ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/25' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/25'
                   }`}>
                 {isConnected ? <><MicOff size={18} /> Interromper sessão</>
                   : isConnecting ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -1671,7 +1777,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             {isConnected && (
               <div className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5
                               bg-black/60 backdrop-blur-sm rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ea4335] animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                 <span className="text-white text-[8px] font-bold tracking-widest">LIVE</span>
               </div>
             )}
@@ -1680,7 +1786,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1
                               px-2 py-1 bg-black/60 backdrop-blur-sm rounded-full">
                 {[0, 120, 240].map(d => (
-                  <span key={d} className="w-1 rounded-full bg-[#4285f4] animate-bounce"
+                  <span key={d} className="w-1 rounded-full bg-blue-500 animate-bounce"
                     style={{ height: '10px', animationDelay: `${d}ms` }} />
                 ))}
               </div>
@@ -1863,7 +1969,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       {showGuide && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-300">
           <div className={`relative w-full max-w-xl rounded-3xl p-6 md:p-8 border shadow-2xl transition-all duration-300 overflow-hidden ${isDark ? 'bg-slate-900/90 border-white/10 text-white' : 'bg-white/95 border-gray-200 text-gray-800'}`}>
-            
+
             {/* Background glow effects */}
             <div className="absolute inset-0 pointer-events-none opacity-20 z-0">
               <div className="absolute -top-[20%] -left-[20%] w-[60%] h-[60%] rounded-full blur-[80px] bg-blue-500" />
@@ -1884,7 +1990,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                     {t(lang, 'guideSubtitle')}
                   </p>
                 </div>
-                <button 
+                <button
                   onClick={() => { setShowGuide(false); localStorage.setItem('gt_hide_guide', 'true'); }}
                   className={`p-1.5 rounded-xl border transition-all hover:bg-red-500/10 hover:text-red-500 ${isDark ? 'border-white/10 text-gray-400' : 'border-gray-200 text-gray-500'}`}
                 >
@@ -1898,13 +2004,12 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   <button
                     key={stepIdx}
                     onClick={() => setGuideStep(stepIdx)}
-                    className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                      guideStep === stepIdx 
-                        ? 'bg-blue-600' 
-                        : guideStep > stepIdx 
-                          ? 'bg-blue-600/40' 
+                    className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${guideStep === stepIdx
+                        ? 'bg-blue-600'
+                        : guideStep > stepIdx
+                          ? 'bg-blue-600/40'
                           : isDark ? 'bg-white/10' : 'bg-gray-200'
-                    }`}
+                      }`}
                   />
                 ))}
               </div>
@@ -2004,11 +2109,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 <button
                   onClick={() => setGuideStep(p => Math.max(0, p - 1))}
                   disabled={guideStep === 0}
-                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border ${
-                    guideStep === 0 
-                      ? 'opacity-30 cursor-not-allowed border-transparent' 
+                  className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border ${guideStep === 0
+                      ? 'opacity-30 cursor-not-allowed border-transparent'
                       : isDark ? 'border-white/10 text-white hover:bg-white/5' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   {t(lang, 'guidePrev')}
                 </button>
@@ -2033,6 +2137,13 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           </div>
         </div>
       )}
+
+      {/* Terms, Telemetry Notice & Cache Permission Modal */}
+      <TermsAndPrivacyModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
+
     </div>
   );
 }
@@ -2040,12 +2151,67 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 // ─── App Root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [screen, setScreen] = useState<'landing' | 'tutor'>('landing');
+  const [screen, setScreen] = useState<'landing' | 'tutor' | 'admin'>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path === '/admin' || hash === '#admin' || path.startsWith('/admin')) {
+        return 'admin';
+      }
+    }
+    return 'landing';
+  });
+
   const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyDS23b_1a6fWsNT3-HiL4SWiffRga8oECY';
 
-  if (screen === 'landing') {
-    return <LandingPage onStartLearning={() => setScreen('tutor')} />;
+  // Handle URL navigation listeners and keyboard shortcut (Ctrl+Alt+A / Cmd+Alt+A)
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path === '/admin' || hash === '#admin' || path.startsWith('/admin')) {
+        setScreen('admin');
+      } else {
+        setScreen(prev => prev === 'admin' ? 'landing' : prev);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Secret admin shortcut: Ctrl+Alt+A or Cmd+Alt+A
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        window.history.pushState(null, '', '/admin');
+        setScreen('admin');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const navigateTo = (targetScreen: 'landing' | 'tutor' | 'admin') => {
+    if (targetScreen === 'admin') {
+      window.history.pushState(null, '', '/admin');
+    } else {
+      window.history.pushState(null, '', '/');
+    }
+    setScreen(targetScreen);
+  };
+
+  if (screen === 'admin') {
+    return <AdminDashboard onExit={() => navigateTo('landing')} />;
   }
 
-  return <TutorScreen apiKey={apiKey} onBack={() => setScreen('landing')} />;
+  if (screen === 'landing') {
+    return <LandingPage onStartLearning={() => navigateTo('tutor')} />;
+  }
+
+  return <TutorScreen apiKey={apiKey} onBack={() => navigateTo('landing')} />;
 }

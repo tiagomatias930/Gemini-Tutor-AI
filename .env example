@@ -1,1 +1,3 @@
 GEMINI_API_KEY=Your_key_acess
+PORT=8080
+ADMIN_SECRET=your_custom_admin_secret_password

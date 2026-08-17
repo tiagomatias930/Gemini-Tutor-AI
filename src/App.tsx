@@ -11,6 +11,7 @@ import { useTheme } from './contexts/ThemeContext';
 import { t, type Lang } from './i18n';
 import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
 import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
+import { LibrasInterpreter } from './components/avatar/LibrasInterpreter';
 import { TermsAndPrivacyModal } from './components/legal/TermsAndPrivacyModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import {
@@ -596,6 +597,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lp_lang') as Lang) || 'en');
   const [studentMemory, setStudentMemory] = useState<string>(() => localStorage.getItem('gt_student_memory') || 'No previous history.');
   const [isDeafMode, setIsDeafMode] = useState(false);
+  const [isTILSActive, setIsTILSActive] = useState(false);
   const [whiteboardElements, setWhiteboardElements] = useState<WhiteboardElement[]>([]);
   const [isChatVisible, setIsChatVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -660,6 +662,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     }
     if (isConnected) return 'listening';
     return 'idle';
+  })();
+
+  // Compute the latest assistant message for TILS
+  const lastAssistantMessage = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') return messages[i].text;
+    }
+    return '';
   })();
 
   // Update memory persistence
@@ -1965,6 +1975,14 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           </div>
         </div>
       </div>
+      {/* ── TILS — Tradutor e Intérprete de Libras ── */}
+      <LibrasInterpreter
+        isActive={isTILSActive}
+        onToggle={() => setIsTILSActive(prev => !prev)}
+        lastAssistantMessage={lastAssistantMessage}
+        isDark={isDark}
+      />
+
       {/* ── INTERACTIVE ONBOARDING GUIDE MODAL ── */}
       {showGuide && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-300">

@@ -591,6 +591,54 @@ app.get('/api/admin/session/:sessionId', requireAdminAuth, async (req, res) => {
   }
 });
 
+// ─── LGPD Compliance Endpoints ──────────────────────────────────────────────
+
+// DELETE session data (Right to Deletion)
+app.delete('/api/admin/session/:id', (req, res) => {
+  const adminKey = req.headers['x-admin-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  if (adminKey !== ADMIN_SECRET) return res.status(403).json({ error: 'Unauthorized' });
+
+  const deleted = telemetry.deleteSession(req.params.id);
+  res.json({ success: deleted, message: deleted ? 'Sessão eliminada com sucesso (LGPD Art. 18, VI)' : 'Sessão não encontrada' });
+});
+
+// POST anonymize session (Right to Anonymization)
+app.post('/api/admin/session/:id/anonymize', (req, res) => {
+  const adminKey = req.headers['x-admin-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  if (adminKey !== ADMIN_SECRET) return res.status(403).json({ error: 'Unauthorized' });
+
+  const anonymized = telemetry.anonymizeSession(req.params.id);
+  res.json({ success: anonymized, message: anonymized ? 'Sessão anonimizada com sucesso (LGPD Art. 18, IV)' : 'Sessão não encontrada' });
+});
+
+// GET export session data (Data Portability)
+app.get('/api/admin/session/:id/export', (req, res) => {
+  const adminKey = req.headers['x-admin-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  if (adminKey !== ADMIN_SECRET) return res.status(403).json({ error: 'Unauthorized' });
+
+  const data = telemetry.exportSessionData(req.params.id);
+  if (!data) return res.status(404).json({ error: 'Sessão não encontrada' });
+  res.json(data);
+});
+
+// POST purge expired data
+app.post('/api/admin/data/purge', (req, res) => {
+  const adminKey = req.headers['x-admin-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  if (adminKey !== ADMIN_SECRET) return res.status(403).json({ error: 'Unauthorized' });
+
+  const days = req.body?.retentionDays || 90;
+  const purged = telemetry.purgeExpiredData(days);
+  res.json({ success: true, purgedCount: purged, message: `${purged} sessões expiradas eliminadas (LGPD Art. 16)` });
+});
+
+// GET LGPD compliance summary
+app.get('/api/admin/lgpd/summary', (req, res) => {
+  const adminKey = req.headers['x-admin-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  if (adminKey !== ADMIN_SECRET) return res.status(403).json({ error: 'Unauthorized' });
+
+  res.json(telemetry.getLGPDSummary());
+});
+
 // ─── Static frontend (production) ────────────────────────────────────────────
 
 const distPath = path.join(__dirname, '..', 'dist');

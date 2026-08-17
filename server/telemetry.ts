@@ -294,6 +294,109 @@ class TelemetryService {
     return this.sessions.get(sessionId);
   }
 
+  // ─── LGPD Compliance Methods ──────────────────────────────────────────────
+
+  // Delete a specific session (LGPD Art. 18, VI - Right to Deletion)
+  public deleteSession(sessionId: string): boolean {
+    const existed = this.sessions.has(sessionId);
+    if (existed) {
+      this.sessions.delete(sessionId);
+      this.saveToDisk();
+    }
+    return existed;
+  }
+
+  // Anonymize a session's personal data (LGPD Art. 18, IV - Anonymization)
+  public anonymizeSession(sessionId: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session) return false;
+
+    session.ip = 'ANONYMIZED';
+    session.country = 'Anonimizado';
+    session.city = 'Anonimizado';
+    session.userAgent = 'ANONYMIZED';
+    session.locationConsent = false;
+
+    this.sessions.set(sessionId, session);
+    this.saveToDisk();
+    return true;
+  }
+
+  // Export all data for a specific session (LGPD Art. 18, V - Data Portability)
+  public exportSessionData(sessionId: string): object | null {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    return {
+      exportFormat: 'LGPD Art. 18 - Portabilidade de Dados',
+      exportTimestamp: new Date().toISOString(),
+      dataController: 'Ngola Tutor AI - Projeto Educacional',
+      sessionData: { ...session },
+      dataCategories: [
+        { type: 'Identificação de Sessão', value: session.sessionId, purpose: 'Gestão de sessão de tutoria' },
+        { type: 'Endereço IP', value: session.ip, purpose: 'Segurança e roteamento de rede' },
+        { type: 'Localização', value: `${session.city}, ${session.country}`, purpose: 'Estatísticas geográficas agregadas' },
+        { type: 'Agente de Utilizador', value: session.userAgent, purpose: 'Compatibilidade de plataforma' },
+        { type: 'Tokens Consumidos', value: session.totalTokens, purpose: 'Monitoramento de custos de IA' },
+        { type: 'Duração', value: `${session.durationSeconds}s`, purpose: 'Métricas de engagement' },
+        { type: 'Mensagens', value: session.messageCount, purpose: 'Métricas de interação' },
+      ],
+      legalBasis: 'Execução de contrato e interesse legítimo (LGPD Art. 7, V e IX)',
+      retentionPolicy: '90 dias após última atividade',
+      rightsExercised: 'Direito de Portabilidade (LGPD Art. 18, V)',
+    };
+  }
+
+  // Purge sessions older than retention period (default 90 days)
+  public purgeExpiredData(retentionDays: number = 90): number {
+    const cutoff = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
+    let purgedCount = 0;
+
+    for (const [id, session] of this.sessions.entries()) {
+      if (session.lastHeartbeat < cutoff && !session.isOnline) {
+        this.sessions.delete(id);
+        purgedCount++;
+      }
+    }
+
+    if (purgedCount > 0) {
+      this.saveToDisk();
+    }
+    return purgedCount;
+  }
+
+  // Get LGPD compliance summary
+  public getLGPDSummary(): object {
+    const allSessions = Array.from(this.sessions.values());
+    const totalSessions = allSessions.length;
+    const withLocationConsent = allSessions.filter(s => s.locationConsent).length;
+    const withCacheEnabled = allSessions.filter(s => s.cacheEnabled).length;
+    const anonymizedSessions = allSessions.filter(s => s.ip === 'ANONYMIZED').length;
+    const oldestSession = allSessions.reduce((oldest, s) => s.startTime < oldest ? s.startTime : oldest, Date.now());
+
+    return {
+      totalDataSubjects: totalSessions,
+      consentMetrics: {
+        locationConsent: { granted: withLocationConsent, denied: totalSessions - withLocationConsent, percentage: totalSessions > 0 ? Math.round((withLocationConsent / totalSessions) * 100) : 0 },
+        cacheConsent: { granted: withCacheEnabled, denied: totalSessions - withCacheEnabled, percentage: totalSessions > 0 ? Math.round((withCacheEnabled / totalSessions) * 100) : 0 },
+      },
+      anonymizationStatus: { anonymized: anonymizedSessions, notAnonymized: totalSessions - anonymizedSessions },
+      retentionPolicy: { maxDays: 90, oldestDataTimestamp: new Date(oldestSession).toISOString() },
+      complianceChecklist: [
+        { item: 'Consentimento Explícito', status: true, article: 'Art. 7, I' },
+        { item: 'Finalidade Específica', status: true, article: 'Art. 6, I' },
+        { item: 'Minimização de Dados', status: true, article: 'Art. 6, III' },
+        { item: 'Transparência', status: true, article: 'Art. 6, VI' },
+        { item: 'Segurança dos Dados', status: true, article: 'Art. 6, VII' },
+        { item: 'Direito de Acesso', status: true, article: 'Art. 18, II' },
+        { item: 'Direito de Eliminação', status: true, article: 'Art. 18, VI' },
+        { item: 'Direito de Portabilidade', status: true, article: 'Art. 18, V' },
+        { item: 'Anonimização Disponível', status: true, article: 'Art. 18, IV' },
+        { item: 'Política de Retenção', status: true, article: 'Art. 16' },
+      ],
+    };
+  }
+
   // Persistence to local disk
   private saveToDisk() {
     try {

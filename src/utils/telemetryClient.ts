@@ -157,3 +157,101 @@ export const startTelemetryHeartbeat = () => {
 
   return () => clearInterval(interval);
 };
+
+// ─── LGPD Compliance Utilities ──────────────────────────────────────────────
+
+// Clear ALL user data from localStorage (Right to Deletion - LGPD Art. 18)
+export const clearAllUserData = (): void => {
+  try {
+    // Remove consent preferences
+    localStorage.removeItem(STORAGE_KEY_CONSENT);
+    // Remove offline cache
+    localStorage.removeItem(STORAGE_KEY_OFFLINE_CACHE);
+    // Remove session ID
+    sessionStorage.removeItem(STORAGE_KEY_SESSION_ID);
+    // Remove other app-specific data
+    localStorage.removeItem('gt_student_memory');
+    localStorage.removeItem('lp_lang');
+    localStorage.removeItem('gt_hide_guide');
+    localStorage.removeItem('ngola_admin_token');
+    // Remove theme preference
+    localStorage.removeItem('ngola_theme');
+  } catch {
+    // Ignore errors
+  }
+};
+
+// Export all user data for portability (LGPD Art. 18, V)
+export const exportUserData = (): object => {
+  const data: Record<string, any> = {};
+  try {
+    // Collect all stored user data
+    data.consentPreferences = getConsentPreferences();
+    data.sessionId = getOrCreateSessionId();
+    data.offlineMessages = getOfflineChatBackup();
+    data.studentMemory = localStorage.getItem('gt_student_memory');
+    data.languagePreference = localStorage.getItem('lp_lang');
+    data.themePreference = localStorage.getItem('ngola_theme');
+    data.exportTimestamp = new Date().toISOString();
+    data.exportFormat = 'LGPD Art. 18 - Portabilidade de Dados';
+  } catch {
+    // Return whatever we collected
+  }
+  return data;
+};
+
+// Get a human-readable summary of what data is stored (LGPD Art. 18, II)
+export const getDataInventory = (): Array<{ category: string; description: string; legalBasis: string; retention: string; stored: boolean }> => {
+  const consent = getConsentPreferences();
+  return [
+    {
+      category: 'Preferências de Consentimento',
+      description: 'Registo das suas escolhas de privacidade e consentimento',
+      legalBasis: 'Obrigação Legal (LGPD Art. 7, II)',
+      retention: 'Enquanto o utilizador mantiver conta ativa',
+      stored: true,
+    },
+    {
+      category: 'ID de Sessão Anónimo',
+      description: 'Identificador temporário para manter a sessão de tutoria',
+      legalBasis: 'Execução de Contrato (LGPD Art. 7, V)',
+      retention: 'Duração da sessão do navegador',
+      stored: !!sessionStorage.getItem(STORAGE_KEY_SESSION_ID),
+    },
+    {
+      category: 'Cache de Mensagens Offline',
+      description: 'Backup local das últimas 50 mensagens para resiliência offline',
+      legalBasis: 'Consentimento (LGPD Art. 7, I)',
+      retention: 'Até o utilizador limpar ou revogar consentimento',
+      stored: consent.cacheEnabled && !!localStorage.getItem(STORAGE_KEY_OFFLINE_CACHE),
+    },
+    {
+      category: 'Memória do Estudante',
+      description: 'Contexto de aprendizagem personalizado (nível, matérias, estilo)',
+      legalBasis: 'Consentimento (LGPD Art. 7, I)',
+      retention: 'Até o utilizador limpar dados',
+      stored: !!localStorage.getItem('gt_student_memory'),
+    },
+    {
+      category: 'Preferência de Idioma',
+      description: 'Idioma selecionado (PT/EN)',
+      legalBasis: 'Interesse Legítimo (LGPD Art. 7, IX)',
+      retention: 'Persistente',
+      stored: !!localStorage.getItem('lp_lang'),
+    },
+    {
+      category: 'Telemetria de Desempenho',
+      description: 'Métricas de uso: duração da sessão, tokens consumidos, latência',
+      legalBasis: 'Interesse Legítimo (LGPD Art. 7, IX)',
+      retention: '90 dias no servidor',
+      stored: consent.telemetryConsent,
+    },
+    {
+      category: 'Localização Geográfica Aproximada',
+      description: 'País e cidade derivados do fuso horário (não GPS)',
+      legalBasis: 'Consentimento (LGPD Art. 7, I)',
+      retention: '90 dias no servidor',
+      stored: consent.locationConsent,
+    },
+  ];
+};

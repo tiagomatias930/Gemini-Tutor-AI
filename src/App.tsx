@@ -21,42 +21,6 @@ import {
 // @ts-ignore
 import tutorSkill from './TutorSkill.md?raw';
 
-// ─── VLibras Integration Helper ────────────────────────────────────────────────
-const speakWithVLibras = (text: string) => {
-  // Clean up code tags/tokens before sending to VLibras
-  const cleanText = text
-    .replace(/\[GT_WHITEBOARD_COMMAND:[^\]]+\]/g, '')
-    .replace(/\[GT_MEMORY_UPDATE:[^\]]+\]/g, '')
-    .replace(/\[GT_CONTEXT_UPDATE:[^\]]+\]/g, '')
-    .trim();
-  if (!cleanText) return;
-
-  // 1. Find the VLibras access button and click it to open/activate the widget if not already active
-  const accessButton = document.querySelector('[vw-access-button]');
-  if (accessButton && !accessButton.classList.contains('active')) {
-    (accessButton as HTMLElement).click();
-  }
-
-  // 2. Safely call the window.plugin.translate method with polling to handle loading states
-  let attempts = 0;
-  const interval = setInterval(() => {
-    attempts++;
-    const win = window as any;
-    if (win.plugin && typeof win.plugin.translate === 'function') {
-      try {
-        win.plugin.translate(cleanText);
-        clearInterval(interval);
-      } catch (err) {
-        console.error("Error communicating with VLibras:", err);
-        clearInterval(interval);
-      }
-    }
-    if (attempts > 30) { // Timeout after 15 seconds
-      clearInterval(interval);
-    }
-  }, 500);
-};
-
 // ─── Localized Friendly Error Handler ──────────────────────────────────────────
 const formatFriendlyError = (errorMsg: string, lang: Lang): string => {
   // If the error message is a raw JSON string from Google Cloud / Gemini API
@@ -1259,17 +1223,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
       const workletCode = `
         class PCMProcessor extends AudioWorkletProcessor {
-          constructor() { super(); this._buf = new Float32Array(2048); this._off = 0; }
+          constructor() { super(); this._buf = new Float32Array(512); this._off = 0; }
           process(inputs) {
             const ch = inputs[0]?.[0];
             if (ch) {
               for (let i = 0; i < ch.length; i++) {
                 this._buf[this._off++] = ch[i];
-                if (this._off >= 2048) {
-                  const pcm = new Int16Array(2048);
-                  for (let j = 0; j < 2048; j++) pcm[j] = Math.max(-32768, Math.min(32767, Math.round(this._buf[j] * 32767)));
+                if (this._off >= 512) {
+                  const pcm = new Int16Array(512);
+                  for (let j = 0; j < 512; j++) pcm[j] = Math.max(-32768, Math.min(32767, Math.round(this._buf[j] * 32767)));
                   this.port.postMessage(pcm.buffer, [pcm.buffer]);
-                  this._buf = new Float32Array(2048); this._off = 0;
+                  this._buf = new Float32Array(512); this._off = 0;
                 }
               }
             }
@@ -1329,21 +1293,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             if ((msg.serverContent as any)?.outputTranscription?.text) {
               liveModelTranscriptRef.current += (msg.serverContent as any).outputTranscription.text;
               setLiveTranscript(liveModelTranscriptRef.current);
-
-              // Real-time sentence-by-sentence VLibras translation
-              const fullText = liveModelTranscriptRef.current;
-              const untranslated = fullText.slice(lastTranslatedIndexRef.current);
-              const sentenceEndMatch = untranslated.match(/[^.!?]+[.!?]/);
-              if (sentenceEndMatch) {
-                const sentence = sentenceEndMatch[0].trim();
-                if (sentence) {
-                  speakWithVLibras(sentence);
-                }
-                lastTranslatedIndexRef.current += sentenceEndMatch.index! + sentenceEndMatch[0].length;
-              }
             }
 
-            // Audio chunks
+            // Audio chunks (stream directly with zero delay)
             if (msg.serverContent?.modelTurn?.parts) {
               for (const part of msg.serverContent.modelTurn.parts) {
                 if (part.inlineData?.mimeType?.startsWith('audio/') && part.inlineData.data) {
@@ -1369,7 +1321,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   const shouldViz = VISUAL_TOPIC_RE.test(userText) || VISUAL_TOPIC_RE.test(modelText);
                   if (shouldViz) {
                     const assistantIdx = updated.length - 1;
-                    // Defer so state has settled
                     setTimeout(() => generateVisual(userText || modelText, assistantIdx), 300);
                   }
                   return updated;
@@ -1385,13 +1336,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 }));
               }
 
-              // Translate any remaining untranslated text at the end of the turn
-              const remaining = modelText.slice(lastTranslatedIndexRef.current).trim();
-              if (remaining) {
-                speakWithVLibras(remaining);
-              }
               lastTranslatedIndexRef.current = 0;
-
               liveUserTranscriptRef.current = '';
               liveModelTranscriptRef.current = '';
               setLiveTranscript('');
@@ -1442,10 +1387,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
           responseModalities: [Modality.AUDIO],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
           systemInstruction: buildSystemInstruction(currentMessages, studentContext),
-          tools: [{ googleSearch: {} }],
           realtimeInputConfig: {
             automaticActivityDetection: {
-              silenceDurationMs: 400,
+              silenceDurationMs: 200,
             },
           },
           ...({ inputAudioTranscription: {}, outputAudioTranscription: {} } as any),

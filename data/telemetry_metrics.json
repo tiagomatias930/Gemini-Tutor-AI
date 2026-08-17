@@ -59,6 +59,26 @@
         "promptTokens": 0,
         "completionTokens": 0,
         "messageCount": 1,
+        "isOnline": false,
+        "cacheEnabled": true,
+        "locationConsent": true
+      }
+    ],
+    [
+      "session_venboyrj_1787006019075",
+      {
+        "sessionId": "session_venboyrj_1787006019075",
+        "ip": "::ffff:127.0.0.1",
+        "country": "Angola 🇦🇴",
+        "city": "Luanda",
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "startTime": 1787006019244,
+        "lastHeartbeat": 1787006158944,
+        "durationSeconds": 139,
+        "totalTokens": 0,
+        "promptTokens": 0,
+        "completionTokens": 0,
+        "messageCount": 1,
         "isOnline": true,
         "cacheEnabled": true,
         "locationConsent": true

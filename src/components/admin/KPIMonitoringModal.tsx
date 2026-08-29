@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { apiFetch } from '../../api/client';
 import { Activity, Clock, Cpu, Globe, MapPin, HardDrive, RefreshCw, X, ShieldAlert, Server, Users, Zap } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -13,11 +14,12 @@ export const KPIMonitoringModal: React.FC<KPIMonitoringModalProps> = ({ isOpen, 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const fetchMetrics = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/telemetry/kpi');
+      const res = await apiFetch('/api/telemetry/kpi');
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -32,11 +34,21 @@ export const KPIMonitoringModal: React.FC<KPIMonitoringModalProps> = ({ isOpen, 
 
   useEffect(() => {
     if (isOpen) {
+      dialogRef.current?.focus();
       fetchMetrics();
       const interval = setInterval(fetchMetrics, 10000); // 10s auto-refresh
       return () => clearInterval(interval);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -49,6 +61,11 @@ export const KPIMonitoringModal: React.FC<KPIMonitoringModalProps> = ({ isOpen, 
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/60 overflow-y-auto">
         <motion.div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="kpi-title"
+          tabIndex={-1}
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -66,7 +83,7 @@ export const KPIMonitoringModal: React.FC<KPIMonitoringModalProps> = ({ isOpen, 
                 <Activity size={22} className="animate-pulse" />
               </div>
               <div>
-                <h3 className="font-heading font-extrabold text-lg sm:text-xl" style={{ color: c.text }}>
+                <h3 id="kpi-title" className="font-heading font-extrabold text-lg sm:text-xl" style={{ color: c.text }}>
                   Painel de Monitoramento & KPIs do Sistema
                 </h3>
                 <p className="text-xs font-semibold text-slate-400">

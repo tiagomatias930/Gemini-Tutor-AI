@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, MapPin, Cpu, HardDrive, Check, X, Lock, Eye, AlertCircle, ChevronRight, UserX, Mail, Database } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -18,10 +18,21 @@ export const TermsAndPrivacyModal: React.FC<TermsAndPrivacyModalProps> = ({
   const { c, isDark } = useTheme();
   const [showCustomize, setShowCustomize] = useState(false);
   const [showDeletionConfirm, setShowDeletionConfirm] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const [locationConsent, setLocationConsent] = useState(() => getConsentPreferences().locationConsent);
   const [telemetryConsent, setTelemetryConsent] = useState(() => getConsentPreferences().telemetryConsent);
   const [cacheEnabled, setCacheEnabled] = useState(() => getConsentPreferences().cacheEnabled);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    dialogRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, onClose]);
 
   const handleAcceptAll = () => {
     const updated = saveConsentPreferences({
@@ -68,6 +79,11 @@ export const TermsAndPrivacyModal: React.FC<TermsAndPrivacyModalProps> = ({
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-3 backdrop-blur-md bg-black/60 overflow-y-auto">
         <motion.div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="privacy-title"
+          tabIndex={-1}
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -87,7 +103,7 @@ export const TermsAndPrivacyModal: React.FC<TermsAndPrivacyModalProps> = ({
                   <ShieldCheck size={26} />
                 </div>
                 <div>
-                  <h3 className="font-heading font-extrabold text-xl sm:text-2xl tracking-tight" style={{ color: c.text }}>
+                  <h3 id="privacy-title" className="font-heading font-extrabold text-xl sm:text-2xl tracking-tight" style={{ color: c.text }}>
                     Aviso de Privacidade (LGPD)
                   </h3>
                   <p className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 mt-0.5">

@@ -1,25 +1,21 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
+import React, { lazy, Suspense, useState, useRef, useEffect, useCallback } from 'react';
 import {
   Mic, MicOff, Sparkles, Camera, CameraOff,
   BookOpen, ArrowRight, Volume2, MessageSquare,
   StopCircle, Send, Globe, CornerDownLeft, Palette, X, ZoomIn, Paperclip, FileText,
   Moon, Sun, Eye, Edit3, Search, Activity, ShieldCheck, WifiOff, Wifi, HardDrive
 } from 'lucide-react';
-import { LandingPage } from './LandingPage';
 import { useTheme } from './contexts/ThemeContext';
 import { t, type Lang } from './i18n';
-import { Whiteboard, type WhiteboardElement } from './components/chat/Whiteboard';
-import { SignLanguageAvatar } from './components/avatar/SignLanguageAvatar';
+import type { WhiteboardElement } from './components/chat/Whiteboard';
 import { LibrasInterpreter } from './components/avatar/LibrasInterpreter';
 import { TermsAndPrivacyModal } from './components/legal/TermsAndPrivacyModal';
-import { AdminDashboard } from './components/admin/AdminDashboard';
 import {
-  getConsentPreferences, startTelemetryHeartbeat, saveOfflineChatBackup,
-  getOfflineChatBackup, detectClientGeo, getOrCreateSessionId
+  getConsentPreferences, saveOfflineChatBackup,
+  getOfflineChatBackup, detectClientGeo, bootstrapStudentSession,
+  rememberServerSessionId, startTelemetryHeartbeat
 } from './utils/telemetryClient';
-// @ts-ignore
-import tutorSkill from './TutorSkill.md?raw';
+import { apiFetch, apiJson, connectLiveSession } from './api/client';
 
 // ─── Localized Friendly Error Handler ──────────────────────────────────────────
 const formatFriendlyError = (errorMsg: string, lang: Lang): string => {
@@ -35,6 +31,12 @@ const formatFriendlyError = (errorMsg: string, lang: Lang): string => {
   }
 
   const lower = parsedMsg.toLowerCase();
+
+  if (lower.includes('live voice is unavailable')) {
+    return lang === 'pt'
+      ? 'A tutoria por voz ainda não está disponível neste servidor. Pode continuar pelo chat de texto.'
+      : 'Live voice is not available on this server yet. You can continue with text chat.';
+  }
 
   // 1. High Demand / Rate limit (503 UNAVAILABLE, 429 quota, etc.)
   if (lower.includes('experiencing high demand') || lower.includes('unavailable') || lower.includes('503') || lower.includes('rate limit') || lower.includes('quota') || lower.includes('capacity')) {
@@ -54,12 +56,12 @@ const formatFriendlyError = (errorMsg: string, lang: Lang): string => {
     }
   }
 
-  // 3. API Key issues
+  // 3. Backend authorization issues
   if (lower.includes('api key') || lower.includes('invalid key') || lower.includes('unauthorized') || lower.includes('403')) {
     if (lang === 'pt') {
-      return "Ops! Ocorreu um problema de autorização com a chave da API do Gemini. 🔑 Por favor, verifique se a chave de acesso está configurada corretamente.";
+      return "O serviço de tutoria não está autorizado neste momento. Por favor, tente novamente mais tarde.";
     } else {
-      return "Oops! An authorization problem occurred with the Gemini API key. 🔑 Please check that your access key is configured correctly.";
+      return "The tutoring service is not authorized right now. Please try again later.";
     }
   }
 
@@ -73,12 +75,8 @@ const formatFriendlyError = (errorMsg: string, lang: Lang): string => {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TUTOR_SYSTEM_INSTRUCTION = tutorSkill;
-
-// Criterion 1: Gemini models  |  Criterion 2: Google GenAI SDK
-const TEXT_MODEL = 'gemini-2.5-flash';
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
-const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
+const Whiteboard = lazy(() => import('./components/chat/Whiteboard').then(module => ({ default: module.Whiteboard })));
+const SignLanguageAvatar = lazy(() => import('./components/avatar/SignLanguageAvatar').then(module => ({ default: module.SignLanguageAvatar })));
 
 // Topics where generating a visual diagram is highly beneficial
 const VISUAL_TOPIC_RE = /\b(explain|how does|what is|describe|show|draw|diagram|illustrate|visualize|cycle|process|system|structure|anatomy|cell|molecule|atom|circuit|photosynthesis|mitosis|meiosis|krebs|dna|protein|evolution|ecosystem|solar system|water cycle|carbon cycle|nitrogen cycle|food chain|neural network|algorithm|data structure|sorting|equation|geometry|triangle|function|derivative|integral|wave|gravity|quantum|thermodynamics|osmosis|diffusion|respiration|digestion|heart|brain|lung|skeleton|muscle|revolution|empire|civilization|volcano|earthquake|plate tectonic|weather|ocean|atmosphere|electromagnetic|newton|einstein|pythagoras|archimedes|map|chart|graph|plot)\b/i;
@@ -96,7 +94,6 @@ interface StudentContext {
   isDeafMode?: boolean;
   isVisionAssist?: boolean;
 }
-
 const EMPTY_STUDENT_CONTEXT: StudentContext = {
   language: '', level: 'unknown', subjects: [], learningStyle: 'unknown',
   strengths: [], struggles: [], topicsCovered: [],
@@ -215,17 +212,27 @@ function GeneratedImageCard({
   onRegenerate?: () => void; isRegenerating?: boolean; isDark: boolean;
 }) {
   const [lightbox, setLightbox] = useState(false);
+  const closeLightboxRef = useRef<HTMLButtonElement>(null);
   const src = `data:${mimeType};base64,${imageBase64}`;
+  useEffect(() => {
+    if (!lightbox) return;
+    closeLightboxRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightbox(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [lightbox]);
 
   return (
     <>
       <div className={`mt-3 rounded-xl overflow-hidden border transition-colors ${isDark ? 'border-white/10 bg-white/5' : 'border-[#e8eaed] bg-[#f8f9fa]'}`}>
-        <div className="relative group cursor-zoom-in" onClick={() => setLightbox(true)}>
+        <button type="button" aria-label="Open illustration preview" className="relative group cursor-zoom-in block w-full" onClick={() => setLightbox(true)}>
           <img src={src} alt="AI-generated illustration" className="w-full object-contain max-h-72" />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
             <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
           </div>
-        </div>
+        </button>
         <div className="px-3 py-2 flex items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-1.5 mb-0.5">
@@ -239,9 +246,9 @@ function GeneratedImageCard({
 
       {/* Lightbox */}
       {lightbox && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+        <div role="dialog" aria-modal="true" aria-label="Illustration preview" className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setLightbox(false)}>
-          <button className="absolute top-4 right-4 text-white/80 hover:text-white" onClick={() => setLightbox(false)}>
+          <button ref={closeLightboxRef} aria-label="Close illustration preview" className="absolute top-4 right-4 text-white/80 hover:text-white" onClick={() => setLightbox(false)}>
             <X size={24} />
           </button>
           <img src={src} alt="AI-generated illustration" className="max-w-full max-h-full rounded-xl shadow-2xl object-contain" onClick={e => e.stopPropagation()} />
@@ -250,7 +257,6 @@ function GeneratedImageCard({
     </>
   );
 }
-
 // ─── Image generating skeleton ────────────────────────────────────────────────
 
 function ImageGeneratingSkeleton({ isDark }: { isDark: boolean }) {
@@ -483,6 +489,7 @@ function DesktopChatContent({
 
         <div className={`relative rounded-[28px] border shadow-xl transition-all duration-300 group ${isDark ? 'bg-white/5 border-white/10 shadow-black/20 focus-within:bg-white/10' : 'bg-white/80 border-white shadow-black/5 focus-within:bg-white focus-within:shadow-2xl focus-within:shadow-blue-500/10'}`}>
           <textarea ref={textareaRef} value={chatInput}
+            aria-label={lang === 'pt' ? 'Mensagem para o tutor' : 'Message to the tutor'}
             onChange={onInputChange}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }}
             placeholder={uploadedFile ? t(lang, 'chatFilePlaceholder').replace('{fileName}', uploadedFile.name) : t(lang, 'chatInputPlaceholder')}
@@ -494,6 +501,7 @@ function DesktopChatContent({
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
             <div className="flex items-center gap-1">
               <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
+                aria-label={lang === 'pt' ? 'Anexar ficheiro' : 'Attach file'}
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all active:scale-90
                            ${uploadedFile ? 'text-blue-600 bg-blue-50 border border-blue-100' : 'text-gray-500 hover:bg-gray-100'}`}>
                 <Paperclip size={18} />
@@ -512,6 +520,7 @@ function DesktopChatContent({
                 {t(lang, 'chatPressEnter')}
               </span>
               <button onClick={onSend} disabled={isSending || (!chatInput.trim() && !uploadedFile)}
+                aria-label={lang === 'pt' ? 'Enviar mensagem' : 'Send message'}
                 className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all
                            bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30
                            disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed active:scale-95">
@@ -556,7 +565,7 @@ function MobileChatMessages({
 
 // ─── Tutor Screen ─────────────────────────────────────────────────────────────
 
-function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void }) {
+export default function TutorScreen({ onBack }: { onBack: () => void }) {
   const { theme, c, isDark, toggleTheme } = useTheme();
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lp_lang') as Lang) || 'en');
   const [studentMemory, setStudentMemory] = useState<string>(() => localStorage.getItem('gt_student_memory') || 'No previous history.');
@@ -577,6 +586,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const [uploadedFile, setUploadedFile] = useState<FileAttachment | null>(null);
   const [showGuide, setShowGuide] = useState(() => localStorage.getItem('gt_hide_guide') !== 'true');
   const [guideStep, setGuideStep] = useState(0);
+  const [camExpanded, setCamExpanded] = useState(false);
+  const [isVisionAssist, setIsVisionAssist] = useState(false);
 
   // Telemetry, Terms & Offline Resilience States
   const [showTermsModal, setShowTermsModal] = useState(() => !getConsentPreferences().acceptedTerms);
@@ -785,18 +796,18 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     sessionStorage.setItem('tutor_student_context', JSON.stringify(studentContext));
   }, [studentContext]);
 
-  // Criterion 3: Cloud Firestore session via backend
-  const [sessionId] = useState(() => {
-    const s = sessionStorage.getItem('tutor_session_id');
-    if (s) return s;
-    const id = `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    sessionStorage.setItem('tutor_session_id', id);
-    return id;
-  });
+  const [sessionId, setSessionId] = useState('');
 
   useEffect(() => {
-    fetch(`/api/sessions/${sessionId}`)
-      .then(r => r.ok ? r.json() : null)
+    void bootstrapStudentSession().then(id => {
+      if (id) setSessionId(id);
+    });
+    return startTelemetryHeartbeat();
+  }, []);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    apiJson<{ messages?: ChatMessage[] }>(`/api/sessions/${sessionId}`)
       .then(d => { if (d?.messages?.length) setMessages(d.messages.map((m: any) => ({ role: m.role, text: m.text, source: m.source }))); })
       .catch(() => { });
   }, [sessionId]);
@@ -822,9 +833,19 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   const liveModelTranscriptRef = useRef('');
   const liveUserTranscriptRef = useRef('');
   const lastTranslatedIndexRef = useRef(0);
+  const guideDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, liveTranscript]);
+  useEffect(() => {
+    if (!showGuide) return;
+    guideDialogRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowGuide(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [showGuide]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const setModelSpeaking = useCallback((v: boolean) => {
@@ -839,38 +860,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     nextPlayTimeRef.current = 0;
   }, []);
 
-  const buildSystemInstruction = useCallback((msgs: ChatMessage[], ctx?: StudentContext) => {
-    let instruction = TUTOR_SYSTEM_INSTRUCTION;
-    instruction += `\n\n## STUDENT PROGRESS MEMORY (LONG-TERM)\n${studentMemory}\n`;
-
-    // Pass current accessibility states
-    instruction += `\n## CURRENT MODE STATUS\n- Vision Assist (Light in Dark): ${isVisionAssist ? 'ACTIVE' : 'OFF'}\n- Avatar (Guide Trustful): ${isDeafMode ? 'ACTIVE' : 'OFF'}\n`;
-
-    // Append student profile if we have any context
-    if (ctx && (ctx.language || ctx.level !== 'unknown' || ctx.subjects.length > 0)) {
-      const lines: string[] = ['\n\n--- Student Profile (this session) ---'];
-      if (ctx.language) lines.push(`Language: ${ctx.language}`);
-      if (ctx.level !== 'unknown') lines.push(`Level: ${ctx.level}`);
-      if (ctx.subjects.length) lines.push(`Subjects: ${ctx.subjects.join(', ')}`);
-      if (ctx.learningStyle !== 'unknown') lines.push(`Learning style: ${ctx.learningStyle}`);
-      if (ctx.strengths.length) lines.push(`Strengths: ${ctx.strengths.join(', ')}`);
-      if (ctx.struggles.length) lines.push(`Struggles: ${ctx.struggles.join(', ')}`);
-      if (ctx.topicsCovered.length) lines.push(`Topics covered: ${ctx.topicsCovered.join(', ')}`);
-      lines.push('--- End Student Profile ---');
-      instruction += lines.join('\n');
-    } else if (ctx && !ctx.triageComplete) {
-      instruction += '\n\nNote: This is the START of the session. Welcome the student, ask what they want to study, and estimate their level and goals.';
-    }
-
-    // Append conversation history (for Live API which needs it in system instruction)
-    if (msgs.length) {
-      const summary = msgs.slice(-12).map(m => `${m.role === 'user' ? 'Student' : 'Tutor'}: ${m.text.slice(0, 200)}`).join('\n');
-      instruction += `\n\n--- Conversation history (remember, do NOT repeat) ---\n${summary}\n--- End ---`;
-    }
-
-    return instruction;
-  }, []);
-
   // ── Image generation ───────────────────────────────────────────────────────
   // Called after text responses for visual topics, and also from the
   // "Visualize" button on any assistant message.
@@ -883,38 +872,16 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       let mimeType = 'image/png';
       let caption = '';
 
-      // Try backend first (Cloud Run)
-      try {
-        const res = await fetch('/api/generate-image', {
+      const data = await apiJson<{ imageBase64: string; mimeType?: string; caption?: string }>(
+        '/api/generate-image',
+        {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ concept, context: messagesRef.current[msgIndex]?.text?.slice(0, 300) }),
-        });
-        if (!res.ok) throw new Error(`Backend ${res.status}`);
-        const data = await res.json();
-        imageBase64 = data.imageBase64;
-        mimeType = data.mimeType;
-        caption = data.caption;
-      } catch {
-        // Fallback: direct Gemini image generation from browser
-        if (!apiKey) throw new Error('Image generation unavailable.');
-        const genAI = new GoogleGenAI({ apiKey });
-        const response = await genAI.models.generateContent({
-          model: IMAGE_MODEL,
-          contents: `Create a clear, educational diagram or illustration for: "${concept}". White background, labeled, suitable for a student.`,
-          config: {
-            responseModalities: ['TEXT', 'IMAGE'] as any,
-          },
-        });
-        for (const part of (response.candidates?.[0]?.content?.parts || [])) {
-          if ((part as any).inlineData?.mimeType?.startsWith('image/')) {
-            imageBase64 = (part as any).inlineData.data || '';
-            mimeType = (part as any).inlineData.mimeType;
-          } else if ((part as any).text) {
-            caption += (part as any).text;
-          }
-        }
-      }
+        },
+      );
+      imageBase64 = data.imageBase64;
+      mimeType = data.mimeType || mimeType;
+      caption = data.caption || '';
 
       setMessages(prev => prev.map((m, i) =>
         i === msgIndex
@@ -925,7 +892,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       console.error('Image generation error:', err);
       setMessages(prev => prev.map((m, i) => i === msgIndex ? { ...m, isGeneratingImage: false } : m));
     }
-  }, [apiKey]);
+  }, []);
 
   // ── Camera ─────────────────────────────────────────────────────────────────
   const startCamera = useCallback(async () => {
@@ -977,6 +944,19 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
     const TEXT_TYPES = ['text/plain', 'text/markdown', 'text/csv', 'application/json', 'text/html', 'text/xml'];
     const isText = TEXT_TYPES.some(t => file.type.startsWith(t)) || /\.(txt|md|csv|json|html|xml|py|js|ts|java|c|cpp|rs)$/i.test(file.name);
+    const isSupportedBinary = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type);
+    const maxBytes = 8 * 1024 * 1024;
+    if (file.size === 0 || file.size > maxBytes || (!isText && !isSupportedBinary)) {
+      setUploadedFile(null);
+      setError(
+        file.size > maxBytes
+          ? (lang === 'pt' ? 'O ficheiro deve ter no máximo 8 MB.' : 'The file must be 8 MB or smaller.')
+          : (lang === 'pt' ? 'Este tipo de ficheiro não é suportado.' : 'This file type is not supported.'),
+      );
+      e.target.value = '';
+      return;
+    }
+    setError('');
 
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -990,6 +970,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         setUploadedFile({ name: file.name, mimeType: file.type, data: base64, isText: false });
       }
     };
+    reader.onerror = () => setError(lang === 'pt' ? 'Não foi possível ler o ficheiro.' : 'The file could not be read.');
 
     if (isText) {
       reader.readAsText(file);
@@ -999,7 +980,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
     // Reset input so the same file can be selected again
     e.target.value = '';
-  }, []);
+  }, [lang]);
 
   // ── Text Chat ──────────────────────────────────────────────────────────────
   const sendChatMessage = useCallback(async (includeImage = false) => {
@@ -1038,62 +1019,46 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       let autoImageMime: string | null = null;
       let autoCaption: string | null = null;
 
-      try {
-        const consent = getConsentPreferences();
-        const geo = consent.locationConsent ? await detectClientGeo() : { country: 'Anônimo', city: 'Não partilhado' };
-
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: userMsg.text,
-            image: frameBase64,
-            fileData: currentFile || undefined,
-            sessionId,
-            history: messages.slice(-12).map(m => ({ role: m.role, text: m.text })),
-            generateImage: shouldVisualise,
-            studentContext: {
-              ...studentContext,
-              isDeafMode,
-              isVisionAssist
-            },
-            locationConsent: consent.locationConsent,
-            cacheEnabled: consent.cacheEnabled,
-            country: geo.country,
-            city: geo.city,
-          }),
-        });
-        if (!res.ok) throw new Error(`Backend ${res.status}`);
-        const data = await res.json();
-        response = data.response;
-        grounded = data.grounded ?? false;
-        autoImage = data.generatedImage || null;
-        autoImageMime = data.generatedImageMime || null;
-        autoCaption = data.imageCaption || null;
-      } catch {
-        // Client-side fallback with Google Search
-        if (!apiKey) throw new Error('Backend unavailable and no API key provided.');
-        const ai = new GoogleGenAI({ apiKey });
-        const parts: any[] = [];
-        if (frameBase64) parts.push({ inlineData: { data: frameBase64, mimeType: 'image/jpeg' } });
-        if (currentFile && !currentFile.isText) {
-          parts.push({ inlineData: { data: currentFile.data, mimeType: currentFile.mimeType } });
-        }
-        let msgText = userMsg.text;
-        if (currentFile?.isText) {
-          msgText = `[Arquivo: ${currentFile.name}]\n\n${currentFile.data}\n\n---\n\n${msgText}`;
-        }
-        parts.push({ text: msgText });
-        const histContents = messages.slice(-12).map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
-        histContents.push({ role: 'user', parts });
-        const result = await ai.models.generateContent({
-          model: TEXT_MODEL,
-          contents: histContents,
-          config: { systemInstruction: buildSystemInstruction(messages, studentContext), tools: [{ googleSearch: {} }] },
-        });
-        response = result.text || 'No response received.';
-        grounded = !!(result.candidates?.[0]?.groundingMetadata);
-      }
+      const consent = getConsentPreferences();
+      const geo = consent.locationConsent ? await detectClientGeo() : { country: 'Anônimo', city: 'Não partilhado' };
+      const data = await apiJson<{
+        sessionId?: string;
+        response: string;
+        grounded?: boolean;
+        generatedImage?: string;
+        generatedImageMime?: string;
+        imageCaption?: string;
+      }>('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          message: userMsg.text,
+          image: frameBase64,
+          fileData: currentFile || undefined,
+          studentContext: {
+            language: studentContext.language || undefined,
+            level: studentContext.level === 'unknown' ? undefined : studentContext.level,
+            subjects: studentContext.subjects,
+            learningStyle: studentContext.learningStyle === 'unknown' ? undefined : studentContext.learningStyle,
+            strengths: studentContext.strengths,
+            struggles: studentContext.struggles,
+            topicsCovered: studentContext.topicsCovered,
+            isDeafMode,
+            isVisionAssist,
+            triageComplete: studentContext.triageComplete,
+          },
+          locationConsent: consent.locationConsent,
+          cacheEnabled: consent.cacheEnabled,
+          country: geo.country,
+          city: geo.city,
+        }),
+      });
+      rememberServerSessionId(data.sessionId);
+      if (data.sessionId) setSessionId(data.sessionId);
+      response = data.response;
+      grounded = data.grounded ?? false;
+      autoImage = data.generatedImage || null;
+      autoImageMime = data.generatedImageMime || null;
+      autoCaption = data.imageCaption || null;
 
       // Add assistant message (with auto-generated image if available)
       const assistantMsg: ChatMessage = {
@@ -1134,7 +1099,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       setError(friendlyError);
       setMessages(prev => [...prev, { role: 'assistant', text: friendlyError, source: 'text' }]);
     } finally { setIsSending(false); }
-  }, [chatInput, captureFrame, messages, apiKey, sessionId, resetTextarea, generateVisual, uploadedFile]);
+  }, [chatInput, captureFrame, messages, sessionId, resetTextarea, generateVisual, uploadedFile, studentContext, isDeafMode, isVisionAssist, lang]);
 
   // ── Live API: video frames ─────────────────────────────────────────────────
   const startSendingFrames = useCallback((session: any) => {
@@ -1195,16 +1160,16 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     if (userText) msgs.push({ role: 'user', text: userText });
     if (assistantText) msgs.push({ role: 'assistant', text: assistantText });
     try {
-      await fetch('/api/save-voice', {
+      await apiJson('/api/save-voice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, messages: msgs }),
+        body: JSON.stringify({ messages: msgs }),
       });
     } catch { }
-  }, [sessionId]);
+  }, []);
 
   // ── Live API: start ────────────────────────────────────────────────────────
   const startSession = async () => {
+    const cameraWasOn = isCameraOn;
     isTearingDownRef.current = false;
     liveModelTranscriptRef.current = '';
     liveUserTranscriptRef.current = '';
@@ -1213,6 +1178,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
     setError('');
 
     try {
+      // Fail before requesting camera/microphone permissions when Live is
+      // disabled or the backend is unreachable.
+      await apiFetch('/api/live');
       setStatusMessage('Requesting camera & microphone...');
       if (!isCameraOn) await startCamera();
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -1255,12 +1223,10 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       workletNode.connect(silence);
       silence.connect(audioCtx.destination);
 
-      setStatusMessage('Connecting to Gemini Live...');
-      const genAI = new GoogleGenAI({ apiKey });
+      setStatusMessage('Connecting to live tutor...');
       const currentMessages = messagesRef.current;
 
-      const session = await genAI.live.connect({
-        model: LIVE_MODEL,
+      const session = await connectLiveSession({
         callbacks: {
           onopen: () => {
             isConnectedRef.current = true;
@@ -1269,7 +1235,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             setStatusMessage(currentMessages.length > 0 ? `Resuming — ${currentMessages.length} messages in context` : 'Live — show me your homework!');
           },
 
-          onmessage: (msg: LiveServerMessage) => {
+          onmessage: (msg: any) => {
             // Server VAD interrupted
             if (msg.serverContent?.interrupted) {
               flushAudioQueue();
@@ -1383,17 +1349,12 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
             setStatusMessage('Session ended');
           },
         },
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
-          systemInstruction: buildSystemInstruction(currentMessages, studentContext),
-          realtimeInputConfig: {
-            automaticActivityDetection: {
-              silenceDurationMs: 200,
-            },
-          },
-          ...({ inputAudioTranscription: {}, outputAudioTranscription: {} } as any),
-        },
+        context: studentContext,
+        memory: studentMemory,
+        history: currentMessages.slice(-12).map(message => ({
+          role: message.role,
+          text: message.text.slice(0, 2_000),
+        })),
       });
 
       sessionRef.current = session;
@@ -1412,6 +1373,17 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       startSendingFrames(session);
     } catch (err: any) {
       console.error('Session start error:', err);
+      isTearingDownRef.current = true;
+      isConnectedRef.current = false;
+      sessionRef.current = null;
+      workletNodeRef.current?.port.close();
+      workletNodeRef.current?.disconnect();
+      workletNodeRef.current = null;
+      audioStreamRef.current?.getTracks().forEach(track => track.stop());
+      audioStreamRef.current = null;
+      await audioContextRef.current?.close().catch(() => undefined);
+      audioContextRef.current = null;
+      if (!cameraWasOn) stopCamera();
       const friendly = formatFriendlyError(err?.message || 'Unknown error', lang);
       setError(friendly);
       setIsConnecting(false);
@@ -1452,9 +1424,6 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
   // Mobile  (<768px): full-screen chat, camera as floating PiP overlay,
   //                   Gemini-style bottom input + FAB voice bar.
   // Desktop (≥768px): side-by-side video + chat panel.
-
-  const [camExpanded, setCamExpanded] = useState(false);
-  const [isVisionAssist, setIsVisionAssist] = useState(false);
 
   return (
     <div className={`h-dvh flex flex-col overflow-hidden relative select-none md:select-auto transition-colors duration-500`}
@@ -1498,7 +1467,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
         <div className="flex items-center gap-3">
           {/* Theme Toggle */}
-          <button onClick={toggleTheme} className={`p-2 rounded-xl border transition-all active:scale-90 ${isDark ? 'bg-white/5 border-white/10 text-amber-400' : 'bg-white border-gray-200 text-gray-500'}`}>
+          <button aria-label={isDark ? 'Use light theme' : 'Use dark theme'} onClick={toggleTheme} className={`p-2 rounded-xl border transition-all active:scale-90 ${isDark ? 'bg-white/5 border-white/10 text-amber-400' : 'bg-white border-gray-200 text-gray-500'}`}>
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
@@ -1614,7 +1583,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                 </div>
               </div>
               <div className="h-[calc(100%-36px)]">
-                <SignLanguageAvatar gesture={avatarGesture} />
+                <Suspense fallback={<div className="h-full grid place-items-center text-xs text-gray-400">Loading avatar…</div>}>
+                  <SignLanguageAvatar gesture={avatarGesture} />
+                </Suspense>
               </div>
             </div>
           )}
@@ -1630,7 +1601,8 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
           <div className="mt-auto space-y-4">
             {error && (
-              <div>
+              <div role="alert" aria-live="assertive" className="text-sm text-red-500">
+                {error}
               </div>
             )}
 
@@ -1657,7 +1629,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               )}
             </div>
 
-            <p className="text-[10px] font-bold uppercase tracking-widest text-center opacity-40">{statusMessage}</p>
+            <p aria-live="polite" className="text-[10px] font-bold uppercase tracking-widest text-center opacity-40">{statusMessage}</p>
           </div>
         </div>
 
@@ -1676,7 +1648,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               </div>
             </div>
             <div className="flex-1 relative">
-              <Whiteboard elements={whiteboardElements} isDark={isDark} />
+              <Suspense fallback={<div className="h-full grid place-items-center text-sm text-gray-400">Loading whiteboard…</div>}>
+                <Whiteboard elements={whiteboardElements} isDark={isDark} />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -1712,7 +1686,9 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
         {/* Avatar overlay for mobile */}
         {isDeafMode && (
           <div className="absolute top-4 left-4 z-50 w-32 h-44 shadow-2xl animate-in slide-in-from-left-4 duration-500">
-            <SignLanguageAvatar gesture={avatarGesture} />
+            <Suspense fallback={<div className="h-full grid place-items-center text-xs text-gray-400">Loading avatar…</div>}>
+              <SignLanguageAvatar gesture={avatarGesture} />
+            </Suspense>
           </div>
         )}
 
@@ -1754,7 +1730,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
         {/* Error banner */}
         {error && (
-          <div className="absolute top-3 left-3 right-3 z-30 px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2]
+          <div role="alert" aria-live="assertive" className="absolute top-3 left-3 right-3 z-30 px-3 py-2 bg-[#fce8e6] border border-[#f5c6c2]
                           rounded-xl text-[#c5221f] text-xs text-center shadow-sm">
             {error}
           </div>
@@ -1833,6 +1809,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               </button>
 
               <button onClick={() => fileInputRef.current?.click()} disabled={isSending}
+                aria-label={lang === 'pt' ? 'Anexar ficheiro' : 'Attach file'}
                 className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center
                             transition-all active:scale-90 mb-0.5 ${uploadedFile
                     ? (isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100')
@@ -1843,6 +1820,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
               <textarea
                 ref={textareaRef} value={chatInput}
+                aria-label={lang === 'pt' ? 'Mensagem para o tutor' : 'Message to the tutor'}
                 onChange={handleInputChange}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(false); } }}
                 placeholder={uploadedFile ? t(lang, 'chatFilePlaceholder').replace('{fileName}', uploadedFile.name) : t(lang, 'chatInputPlaceholder')}
@@ -1855,6 +1833,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               {/* Right side — send or mic */}
               {(chatInput.trim() || uploadedFile) && (
                 <button onClick={() => sendChatMessage(false)} disabled={isSending}
+                  aria-label={lang === 'pt' ? 'Enviar mensagem' : 'Send message'}
                   className="shrink-0 w-10 h-10 rounded-2xl bg-blue-600 hover:bg-blue-700
                              text-white flex items-center justify-center transition-all
                              active:scale-90 disabled:opacity-50 mb-0.5 shadow-lg shadow-blue-500/30">
@@ -1930,7 +1909,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
       {/* ── INTERACTIVE ONBOARDING GUIDE MODAL ── */}
       {showGuide && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className={`relative w-full max-w-xl rounded-3xl p-6 md:p-8 border shadow-2xl transition-all duration-300 overflow-hidden ${isDark ? 'bg-slate-900/90 border-white/10 text-white' : 'bg-white/95 border-gray-200 text-gray-800'}`}>
+          <div ref={guideDialogRef} role="dialog" aria-modal="true" aria-labelledby="guide-title" tabIndex={-1} className={`relative w-full max-w-xl rounded-3xl p-6 md:p-8 border shadow-2xl transition-all duration-300 overflow-hidden ${isDark ? 'bg-slate-900/90 border-white/10 text-white' : 'bg-white/95 border-gray-200 text-gray-800'}`}>
 
             {/* Background glow effects */}
             <div className="absolute inset-0 pointer-events-none opacity-20 z-0">
@@ -1942,7 +1921,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
               {/* Header */}
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h3 className="text-xl font-bold flex items-center gap-2">
+                  <h3 id="guide-title" className="text-xl font-bold flex items-center gap-2">
                     <span className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
                       <BookOpen size={20} />
                     </span>
@@ -1953,6 +1932,7 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
                   </p>
                 </div>
                 <button
+                  aria-label="Close onboarding guide"
                   onClick={() => { setShowGuide(false); localStorage.setItem('gt_hide_guide', 'true'); }}
                   className={`p-1.5 rounded-xl border transition-all hover:bg-red-500/10 hover:text-red-500 ${isDark ? 'border-white/10 text-gray-400' : 'border-gray-200 text-gray-500'}`}
                 >
@@ -2108,72 +2088,4 @@ function TutorScreen({ apiKey, onBack }: { apiKey: string; onBack: () => void })
 
     </div>
   );
-}
-
-// ─── App Root ─────────────────────────────────────────────────────────────────
-
-export default function App() {
-  const [screen, setScreen] = useState<'landing' | 'tutor' | 'admin'>(() => {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      const hash = window.location.hash;
-      if (path === '/admin' || hash === '#admin' || path.startsWith('/admin')) {
-        return 'admin';
-      }
-    }
-    return 'landing';
-  });
-
-  const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyDS23b_1a6fWsNT3-HiL4SWiffRga8oECY';
-
-  // Handle URL navigation listeners and keyboard shortcut (Ctrl+Alt+A / Cmd+Alt+A)
-  useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname;
-      const hash = window.location.hash;
-      if (path === '/admin' || hash === '#admin' || path.startsWith('/admin')) {
-        setScreen('admin');
-      } else {
-        setScreen(prev => prev === 'admin' ? 'landing' : prev);
-      }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Secret admin shortcut: Ctrl+Alt+A or Cmd+Alt+A
-      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'a' || e.key === 'A')) {
-        e.preventDefault();
-        window.history.pushState(null, '', '/admin');
-        setScreen('admin');
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    window.addEventListener('hashchange', handlePopState);
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('hashchange', handlePopState);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
-  const navigateTo = (targetScreen: 'landing' | 'tutor' | 'admin') => {
-    if (targetScreen === 'admin') {
-      window.history.pushState(null, '', '/admin');
-    } else {
-      window.history.pushState(null, '', '/');
-    }
-    setScreen(targetScreen);
-  };
-
-  if (screen === 'admin') {
-    return <AdminDashboard onExit={() => navigateTo('landing')} />;
-  }
-
-  if (screen === 'landing') {
-    return <LandingPage onStartLearning={() => navigateTo('tutor')} />;
-  }
-
-  return <TutorScreen apiKey={apiKey} onBack={() => navigateTo('landing')} />;
 }

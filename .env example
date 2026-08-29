@@ -1,3 +1,19 @@
-GEMINI_API_KEY=Your_key_acess
+# Copy this file to `.env` in the project root. Never commit real secrets.
+
+GEMINI_API_KEY=
+GEMINI_TEXT_MODEL=gemini-3.6-flash
+GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
+GEMINI_LIVE_MODEL=gemini-2.5-flash-native-audio-latest
+GEMINI_LIVE_MAX_DURATION_MS=1800000
+GEMINI_LIVE_SESSIONS_PER_IP=2
+GEMINI_LIVE_MAX_SESSIONS=20
+GEMINI_LIVE_CONNECTIONS_PER_MINUTE=6
 PORT=8080
-ADMIN_SECRET=your_custom_admin_secret_password
+ADMIN_SECRET=
+SESSION_SECRET=
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+GOOGLE_CLOUD_PROJECT=
+CURSOR_API_KEY=
+CURSOR_REPO_URL=https://github.com/tiagomatias930/Gemini-Tutor-AI
+CURSOR_REPO_REF=main
+CURSOR_DEFAULT_MODEL=composer-2.5

@@ -1,6 +1,7 @@
 /**
  * Ngola Tutor — Client-side Telemetry, Geolocation & Offline Cache Manager
  */
+import { apiJson } from '../api/client';
 
 export interface ConsentPreferences {
   acceptedTerms: boolean;
@@ -13,6 +14,7 @@ export interface ConsentPreferences {
 const STORAGE_KEY_CONSENT = 'ngola_consent_preferences_v1';
 const STORAGE_KEY_OFFLINE_CACHE = 'ngola_offline_messages_cache';
 const STORAGE_KEY_SESSION_ID = 'ngola_telemetry_session_id';
+const SERVER_SESSION_ID = /^[a-f0-9]{32}$/;
 
 // Default preferences
 export const getDefaultConsent = (): ConsentPreferences => ({
@@ -53,19 +55,37 @@ export const saveConsentPreferences = (prefs: Partial<ConsentPreferences>): Cons
   return updated;
 };
 
-// Get or initialize a unique anonymous session ID
-export const getOrCreateSessionId = (): string => {
+export const rememberServerSessionId = (sessionId?: string): void => {
+  if (!sessionId || !SERVER_SESSION_ID.test(sessionId)) return;
   try {
-    let sid = sessionStorage.getItem(STORAGE_KEY_SESSION_ID);
-    if (!sid) {
-      sid = 'session_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
-      sessionStorage.setItem(STORAGE_KEY_SESSION_ID, sid);
-    }
-    return sid;
+    sessionStorage.setItem(STORAGE_KEY_SESSION_ID, sessionId);
   } catch {
-    return 'session_fallback_' + Date.now();
+    // Ignore sessionStorage errors
   }
 };
+
+export const getStoredServerSessionId = (): string | null => {
+  try {
+    const sid = sessionStorage.getItem(STORAGE_KEY_SESSION_ID);
+    return sid && SERVER_SESSION_ID.test(sid) ? sid : null;
+  } catch {
+    return null;
+  }
+};
+
+export const bootstrapStudentSession = async (): Promise<string | null> => {
+  const stored = getStoredServerSessionId();
+  if (stored) return stored;
+  try {
+    const data = await apiJson<{ sessionId?: string }>('/api/health');
+    rememberServerSessionId(data.sessionId);
+    return getStoredServerSessionId();
+  } catch {
+    return null;
+  }
+};
+
+export const getOrCreateSessionId = (): string => getStoredServerSessionId() ?? '';
 
 // Approximate Geolocation detector (client-side assistance)
 export const detectClientGeo = async (): Promise<{ country?: string; city?: string }> => {
@@ -122,7 +142,6 @@ export const getOfflineChatBackup = (): any[] | null => {
 
 // Start automated Telemetry Heartbeat (tracks session time and network health)
 export const startTelemetryHeartbeat = () => {
-  const sessionId = getOrCreateSessionId();
   let sessionSeconds = 0;
 
   const sendHeartbeat = async () => {
@@ -133,11 +152,9 @@ export const startTelemetryHeartbeat = () => {
     const geo = consent.locationConsent ? await detectClientGeo() : { country: 'Anônimo', city: 'Não partilhado' };
 
     try {
-      await fetch('/api/telemetry/heartbeat', {
+      await apiJson('/api/telemetry/heartbeat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionId,
           durationSeconds: sessionSeconds,
           locationConsent: consent.locationConsent,
           cacheEnabled: consent.cacheEnabled,

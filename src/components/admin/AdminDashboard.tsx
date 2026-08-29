@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { apiFetch, apiJson, ApiError } from '../../api/client';
 import {
   Shield, ShieldCheck, ShieldAlert, Lock, Eye, EyeOff, Activity,
   Server, Cpu, Zap, Clock, Users, Globe, MapPin, Search,
@@ -59,7 +60,7 @@ interface AdminDashboardProps {
   onExit: () => void;
 }
 
-const STORAGE_ADMIN_KEY = 'ngola_admin_token';
+const STORAGE_ADMIN_KEY = 'ngola_admin_session';
 
 const MOCK_LOGS = [
   { id: 1, type: 'info', event: 'Sessão criada', details: 'Nova sessão iniciada em Luanda, Angola', time: 'Há 2 min' },
@@ -77,12 +78,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Auth states
-  const [adminToken, setAdminToken] = useState<string>(() => sessionStorage.getItem(STORAGE_ADMIN_KEY) || '');
   const [inputKey, setInputKey] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(sessionStorage.getItem(STORAGE_ADMIN_KEY)));
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Data states
   const [data, setData] = useState<KPIData | null>(null);
@@ -118,49 +118,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   ] as const;
 
   // Helper for admin headers
-  const getAuthHeaders = useCallback((token: string) => {
-    return {
-      'Content-Type': 'application/json',
-      'x-admin-key': token,
-      'Authorization': `Bearer ${token}`,
-    };
-  }, []);
-
-  // Fetch KPI & User telemetry data
-  const fetchData = useCallback(async (tokenToUse?: string) => {
-    const key = tokenToUse || adminToken;
-    if (!key) return;
-
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/telemetry/kpi', {
-        headers: getAuthHeaders(key),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-        setLastRefreshed(new Date());
-        setIsAuthenticated(true);
-        sessionStorage.setItem(STORAGE_ADMIN_KEY, key);
-        setAdminToken(key);
-      } else if (res.status === 401 || res.status === 403) {
+      const json = await apiJson<KPIData>('/api/telemetry/kpi');
+      setData(json);
+      setLastRefreshed(new Date());
+      setIsAuthenticated(true);
+      sessionStorage.setItem(STORAGE_ADMIN_KEY, '1');
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         setIsAuthenticated(false);
         sessionStorage.removeItem(STORAGE_ADMIN_KEY);
-        setAuthError('Chave de administração expirada ou inválida.');
+        setAuthError('Sessão de administração expirada ou inválida.');
       }
-    } catch (err: any) {
-      console.error('Admin telemetry fetch error:', err);
     } finally {
       setLoading(false);
     }
-  }, [adminToken, getAuthHeaders]);
+  }, []);
 
   useEffect(() => {
-    if (adminToken) {
-      fetchData(adminToken);
-    }
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     if (!isAuthenticated || autoRefreshInterval <= 0) return;
@@ -181,32 +160,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     setAuthError(null);
 
     try {
-      const res = await fetch('/api/admin/verify', {
+      await apiJson('/api/admin/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: inputKey.trim() }),
       });
-
-      const json = await res.json();
-
-      if (res.ok && json.success) {
-        setAdminToken(inputKey.trim());
-        sessionStorage.setItem(STORAGE_ADMIN_KEY, inputKey.trim());
-        setIsAuthenticated(true);
-        await fetchData(inputKey.trim());
-      } else {
-        setAuthError(json.error || 'Chave de administração incorreta.');
-      }
+      setIsAuthenticated(true);
+      await fetchData();
     } catch (err) {
-      setAuthError('Falha ao contactar o servidor. Tente novamente.');
+      setAuthError(err instanceof ApiError ? err.message : 'Falha ao contactar o servidor. Tente novamente.');
     } finally {
       setAuthLoading(false);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiJson('/api/admin/logout', { method: 'POST' });
+    } catch {
+      // Cookie may already be gone.
+    }
     sessionStorage.removeItem(STORAGE_ADMIN_KEY);
-    setAdminToken('');
     setInputKey('');
     setIsAuthenticated(false);
     setData(null);
@@ -224,13 +197,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     setSessionDetail(null);
 
     try {
-      const res = await fetch(`/api/admin/session/${sessionId}`, {
-        headers: getAuthHeaders(adminToken),
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setSessionDetail(json);
-      }
+      const json = await apiJson(`/api/admin/session/${sessionId}`);
+      setSessionDetail(json);
     } catch (err) {
       console.error('Error fetching session inspect details:', err);
     } finally {
@@ -344,27 +312,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   const executeLgpdAction = async () => {
     const { action, sessionId } = lgpdConfirm;
     try {
-      let res;
       if (action === 'delete') {
-        res = await fetch(`/api/admin/session/${sessionId}`, { method: 'DELETE', headers: getAuthHeaders(adminToken) });
+        await apiJson(`/api/admin/session/${sessionId}`, { method: 'DELETE' });
       } else if (action === 'anonymize') {
-        res = await fetch(`/api/admin/session/${sessionId}/anonymize`, { method: 'POST', headers: getAuthHeaders(adminToken) });
+        await apiJson(`/api/admin/session/${sessionId}/anonymize`, { method: 'POST' });
       } else if (action === 'export') {
-        res = await fetch(`/api/admin/session/${sessionId}/export`, { method: 'GET', headers: getAuthHeaders(adminToken) });
-        if (res.ok) {
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `lgpd_export_${sessionId}.json`;
-          a.click();
-        }
+        const res = await apiFetch(`/api/admin/session/${sessionId}/export`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `lgpd_export_${sessionId}.json`;
+        a.click();
       } else if (action === 'purge') {
-        res = await fetch(`/api/admin/data/purge`, { method: 'POST', headers: getAuthHeaders(adminToken) });
-      }
-      
-      if (res && !res.ok) {
-        console.error("Erro na ação LGPD");
+        await apiJson(`/api/admin/data/purge`, { method: 'POST', body: JSON.stringify({ retentionDays: 90 }) });
       }
     } catch(e) {
       console.error('Falha ao executar ação LGPD:', e);
@@ -372,7 +333,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
       setLgpdConfirm(prev => ({ ...prev, isOpen: false }));
       if (action !== 'export') {
         setLgpdSessionId('');
-        fetchData();
+        void fetchData();
       }
     }
   };

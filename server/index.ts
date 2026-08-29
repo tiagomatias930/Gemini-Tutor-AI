@@ -4,6 +4,7 @@ import {createApp} from './app.js';
 import {loadConfig} from './config.js';
 import {connectDataStore} from './data-store.js';
 import {ManagedGeminiService} from './gemini.js';
+import {attachLiveProxy} from './live-proxy.js';
 import {TelemetryService} from './telemetry.js';
 
 dotenv.config({path: path.resolve(process.cwd(), '..', '.env')});
@@ -31,6 +32,7 @@ const server = app.listen(config.port, () => {
     })
   );
 });
+const liveProxy = attachLiveProxy(server, config);
 
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
@@ -39,6 +41,7 @@ async function shutdown(signal: string): Promise<void> {
   console.log(JSON.stringify({level: 'info', message: 'Shutting down', signal}));
   const forced = setTimeout(() => process.exit(1), 10_000);
   forced.unref();
+  liveProxy.close();
   server.close(async error => {
     telemetry.close();
     if (store.db) await store.db.terminate().catch(() => undefined);

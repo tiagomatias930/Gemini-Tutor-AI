@@ -1,6 +1,10 @@
 .env
 node_modules
 dist
+server/data
+data/telemetry_metrics.json
+.env.*
+!.env.example
 .codex
 docs
 .dockerignore

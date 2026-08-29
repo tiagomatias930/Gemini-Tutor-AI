@@ -47,12 +47,16 @@ export function createApp(dependencies: AppDependencies) {
 
   app.use(helmet());
   app.use(
-    cors({
-      credentials: true,
-      origin(origin, callback) {
-        if (!origin || config.corsOrigins.includes(origin)) return callback(null, true);
-        return callback(new CorsDeniedError());
-      },
+    cors<Request>((req, callback) => {
+      const origin = req.headers.origin;
+      // The browser sends an Origin header even for same-origin POSTs. Requests
+      // coming from the page this server itself served must always be allowed,
+      // otherwise every deployment needs its own generated URL in CORS_ORIGINS.
+      if (!origin || isSameOrigin(origin, req) || config.corsOrigins.includes(origin)) {
+        callback(null, {credentials: true, origin: true});
+        return;
+      }
+      callback(new CorsDeniedError());
     })
   );
   app.use(
@@ -287,6 +291,17 @@ export function createApp(dependencies: AppDependencies) {
   });
   app.use(errorHandler);
   return app;
+}
+
+function isSameOrigin(origin: string, req: Request): boolean {
+  const forwarded = req.headers['x-forwarded-host'];
+  const host = (Array.isArray(forwarded) ? forwarded[0] : forwarded) || req.headers.host;
+  if (!host) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
 }
 
 function studentSession(req: Request): string {

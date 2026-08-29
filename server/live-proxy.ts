@@ -291,7 +291,7 @@ function validateUpgrade(
   if (!ready) return {status: 503, reason: 'Service Unavailable'};
 
   const origin = request.headers.origin;
-  if (!origin || !config.corsOrigins.includes(origin)) {
+  if (!origin || !(isSameOrigin(origin, request) || config.corsOrigins.includes(origin))) {
     return {status: 403, reason: 'Forbidden'};
   }
 
@@ -343,6 +343,17 @@ function consumeBandwidth(state: ConnectionState, bytes: number): boolean {
   }
   state.bytesInWindow += bytes;
   return state.bytesInWindow <= MAX_BYTES_PER_MINUTE;
+}
+
+function isSameOrigin(origin: string, request: IncomingMessage): boolean {
+  const forwarded = request.headers['x-forwarded-host'];
+  const host = (Array.isArray(forwarded) ? forwarded[0] : forwarded) || request.headers.host;
+  if (!host) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
 }
 
 function clientIp(request: IncomingMessage): string {

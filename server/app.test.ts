@@ -109,6 +109,35 @@ describe('request hardening', () => {
       .expect(response => expect(response.body.error.code).toBe('CORS_DENIED'));
   });
 
+  it('allows same-origin admin login on a deployment URL absent from CORS_ORIGINS', async () => {
+    const {app} = testApp();
+    const deployed = 'ngola-tutor-ai-abc123.run.app';
+    expect(config.corsOrigins).not.toContain(`https://${deployed}`);
+
+    await request(app)
+      .post('/api/admin/verify')
+      .set('Host', deployed)
+      .set('Origin', `https://${deployed}`)
+      .send({key: config.adminSecret})
+      .expect(200);
+
+    // Behind Cloud Run the public hostname arrives via X-Forwarded-Host.
+    await request(app)
+      .post('/api/admin/verify')
+      .set('X-Forwarded-Host', deployed)
+      .set('Origin', `https://${deployed}`)
+      .send({key: config.adminSecret})
+      .expect(200);
+
+    // A different host in the Origin is still cross-origin and must be denied.
+    await request(app)
+      .post('/api/admin/verify')
+      .set('Host', deployed)
+      .set('Origin', 'https://attacker.example')
+      .send({key: config.adminSecret})
+      .expect(403);
+  });
+
   it('rejects JSON bodies over 10MB with a safe structured error', async () => {
     const {app} = testApp();
     const response = await request(app)

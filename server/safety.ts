@@ -34,16 +34,13 @@ export const strictSafetySettings = [
 // ─── 2. PROMPT ROBUSTNESS: Jailbreak & Injection Defense ────────────────────
 
 const JAILBREAK_PATTERNS = [
-  /ignore (previous|all|instructions)/i,
+  /ignore (?:the )?(previous|all) instructions/i,
   /you are now (offline|freed|jailbroken)/i,
   /\bdan mode\b/i,
   /\bmodo dan\b/i,
-  /\bdan\b/i,
-  /system (prompt|instruction|rules)/i,
   /reveal your (instructions|rules|prompt)/i,
   /desconsidere as (instruções|regras) anteriores/i,
-  /desconsidere/i,
-  /revel[ae].*prompt/i,
+  /revel[ae].*(?:teu|seu|your).*(?:prompt|instruções)/i,
   /como você foi programado/i,
   /esqueça (tudo|as regras|as instruções)/i,
 ];
@@ -58,15 +55,15 @@ const THERAPY_MENTAL_HEALTH = [
 const ILLEGAL_WEAPONS_HACKING = [
   /como (fazer|criar).*(bomba|explosivo|droga|arma|metanfetamina|cocaína|crack)/i,
   /how to (make|create).*(bomb|explosive|meth|cocaine|gun|weapon)/i,
-  /\b(hackear|invadir|fraudar|roubar senhas|carding|phishing)\b/i,
-  /\b(hack into|exploit website|steal passwords|bypass security)\b/i
+  /\b(como|ajuda-me a|quero)\b.*\b(hackear|invadir|fraudar|roubar senhas|carding)\b/i,
+  /\b(how (?:do|can) i|help me)\b.*\b(hack into|exploit|steal passwords|bypass security)\b/i
 ];
 
 const PROFESSIONAL_ADVICE = [
   /\b(prescreve|remédio|diagnóstico médico|receita médica|estou com sintomas de|cura para|antibiótico)\b/i,
   /\b(diagnose me|medical prescription|cure for|symptoms of|antibiotics)\b/i,
-  /\b(ações|bolsa de valores|investir|investimento|poupanças|criptomoedas|bitcoin|ações na bolsa)\b/i,
-  /\b(financial advice|stock tips|invest all my savings|buy stocks|cryptocurrency)\b/i
+  /\b(onde|em que|qual).*(investir|ação comprar|criptomoeda comprar)|investir.*todas.*poupanças\b/i,
+  /\b(stock tips|invest all my savings|what stock should i buy|personal financial advice)\b/i
 ];
 
 // ─── Portuguese, English, French Persona Refusal Generators ─────────────────
